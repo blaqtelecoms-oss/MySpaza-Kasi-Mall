@@ -80,7 +80,7 @@ See `README.md` for local setup, environment variables and the Supabase schema.
   (`rate_limit_email_sent`) *before* calling the hook, so a low value returns
   "email rate limit exceeded" even though the hook works. It is a per-project
   setting (Auth → Rate Limits, or `PATCH /v1/projects/{ref}/config/auth`); this
-  project runs at 30 per hour.
+  project runs at 200 per hour (Resend's plan limits still apply below it).
 - The hook URI points at the sandbox host `https://8000-$BASE44_PUBLIC_HOST_SUFFIX/...`,
   so it must be pointed at the real domain on deploy (and re-pointed if the
   sandbox is recreated).
