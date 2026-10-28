@@ -52,8 +52,9 @@ See `README.md` for local setup, environment variables and the Supabase schema.
 - Supabase credentials come from the platform env file `/run/base44/app.env`
   (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). They are never committed.
 - `BASE44_PREVIEW_MODE=1` makes `vite.config.js` bind the dev server to
-  `0.0.0.0` so the preview proxy can reach it. Unset, `npm run dev` keeps its
-  default localhost binding.
+  `0.0.0.0` and accept the preview host (`.<BASE44_SANDBOX_HOST_DOMAIN>`, e.g.
+  `3000-<sandbox id>.e2b.app`) so the preview proxy can reach it. Unset,
+  `npm run dev` keeps its default localhost binding and host checks.
 - The app talks to Supabase directly from the browser; the only local backend
   is the email service.
 
