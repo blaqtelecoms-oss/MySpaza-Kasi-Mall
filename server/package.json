@@ -1,0 +1,11 @@
+{
+  "name": "my-spaza-email-service",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Server-side Resend email service: signup verification codes and delivery-event webhook.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  }
+}

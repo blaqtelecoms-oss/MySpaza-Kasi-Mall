@@ -36,6 +36,7 @@ const SpazaCoach = lazy(() => import('@/pages/SpazaCoach'));
 const FundingHub = lazy(() => import('@/pages/FundingHub'));
 const MySpazaCard = lazy(() => import('@/pages/MySpazaCard'));
 const Settings = lazy(() => import('@/pages/Settings'));
+const EmailEvents = lazy(() => import('@/pages/EmailEvents'));
 
 const PageLoader = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -108,6 +109,7 @@ const AuthenticatedApp = () => {
             <Route path="/funding" element={<FundingHub />} />
             <Route path="/myspaza-card" element={<MySpazaCard />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/admin/email-events" element={<EmailEvents />} />
           </Route>
         </Route>
         <Route path="*" element={<PageNotFound />} />

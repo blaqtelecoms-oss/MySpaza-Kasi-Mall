@@ -14,6 +14,7 @@ const TABLES = {
   BulkBuy: "bulk_buy",
   CashUp: "cash_up",
   Customer: "customer",
+  EmailEvent: "email_event",
   Expense: "expense",
   Product: "product",
   PurchaseOrder: "purchase_order",

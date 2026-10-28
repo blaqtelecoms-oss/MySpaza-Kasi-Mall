@@ -56,3 +56,48 @@ services:
       timeout: 5s
       retries: 5
       start_period: 120s
+
+  # Resend email service (server/): sends Supabase auth emails — the signup
+  # verification code — through Resend, and records Resend delivery webhooks.
+  # Zero npm dependencies (node:http + fetch), so it runs from the bind-mounted
+  # source with no install step.
+  api:
+    image: node:22
+    restart: on-failure
+    working_dir: /app
+    command: ["node", "server/index.js"]
+    environment:
+      - PORT=8080
+      # Sender for every auth email; the domain must be verified in Resend.
+      - RESEND_FROM_EMAIL=noreply@myspaza-app.co.za
+      - RESEND_FROM_NAME=My Spaza
+    env_file:
+      # RESEND_API_KEY, RESEND_WEBHOOK_SECRET and
+      # SUPABASE_SEND_EMAIL_HOOK_SECRET, plus VITE_SUPABASE_URL and
+      # SUPABASE_SERVICE_ROLE_KEY used to write the email log.
+      - /run/base44/app.env
+    volumes:
+      - .:/app
+    # Webhook endpoints are called by Resend and Supabase, so the service is
+    # reachable on its own port:
+    #   https://8000-${BASE44_PUBLIC_HOST_SUFFIX}/api/webhooks/resend
+    #   https://8000-${BASE44_PUBLIC_HOST_SUFFIX}/api/hooks/supabase/send-email
+    ports:
+      - "8000:8080"
+    labels:
+      base44.project: SpazaFlow Email
+      base44.kind: api
+      base44.port: "8000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - |
+          fetch('http://127.0.0.1:8080/health')
+            .then((r) => process.exit(r.ok ? 0 : 1))
+            .catch(() => process.exit(1));
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s

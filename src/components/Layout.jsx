@@ -5,9 +5,11 @@ import {
   LayoutDashboard, ShoppingCart, Package, TrendingUp, DollarSign,
   Users, Truck, BookOpen, BarChart2, Settings, Menu, X, Bell,
   Building2, GraduationCap, Bot, CreditCard, ChevronDown, ChevronRight,
-  Banknote, UserCheck, Calculator, RefreshCw, Wallet, ArrowLeft, TrendingDown, Receipt
+  Banknote, UserCheck, Calculator, RefreshCw, Wallet, ArrowLeft, TrendingDown, Receipt,
+  MailSearch
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { useAuth } from "@/lib/AuthContext";
 import { queryClientInstance } from "@/lib/query-client";
 import OfflineBanner from "@/components/OfflineBanner";
 
@@ -31,9 +33,13 @@ const navItems = [
   { icon: CreditCard, label: "Funding Hub", path: "/funding" },
   { icon: Wallet, label: "MySpaza Card", path: "/myspaza-card" },
   { icon: Settings, label: "Settings", path: "/settings" },
+  // Operator-only: the Resend delivery log for signup and account emails.
+  { icon: MailSearch, label: "Email Log", path: "/admin/email-events", adminOnly: true },
 ];
 
 export default function Layout() {
+  const { user } = useAuth();
+  const visibleNavItems = navItems.filter((item) => !item.adminOnly || user?.role === "admin");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [btnRefreshing, setBtnRefreshing] = useState(false);
   const location = useLocation();
@@ -102,7 +108,7 @@ export default function Layout() {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-2 select-none">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path ||
               (item.path !== "/" && location.pathname.startsWith(item.path));
@@ -157,7 +163,7 @@ export default function Layout() {
             </button>
             <div className="hidden sm:block">
               <h2 className="font-semibold text-gray-800 dark:text-gray-100">
-                {navItems.find(i =>
+                {visibleNavItems.find(i =>
                   i.path === location.pathname ||
                   (i.path !== "/" && location.pathname.startsWith(i.path))
                 )?.label || "My Spaza"}
