@@ -1,0 +1,101 @@
+# AGENTS.md
+
+## Project Context
+
+My Spaza is a React + Vite single-page shop-management app. Data, media and
+user accounts live in **Supabase** (Postgres, Auth, Storage). Keep changes
+focused on the user's request and preserve existing project conventions.
+
+See `README.md` for local setup, environment variables and the Supabase schema.
+
+## Key Files
+
+- `src/`: frontend application source.
+- `src/api/supabase.js`: Supabase browser client (URL + anon/publishable key).
+- `src/api/client.js`: the app's data/auth API — entity methods (`list`,
+  `filter`, `get`, `create`, `update`, `delete`, bulk forms) map to snake_case
+  Postgres tables, plus `auth` (Supabase Auth) and
+  `integrations.Core.UploadPublicFile` (Supabase Storage, `inventory-media`).
+- `src/lib/AuthContext.jsx`: session/profile state for the whole app.
+- `src/lib/offlineLayer.js` + `offlineStorage/offlineQueue/syncEngine`: offline
+  cache and write queue wrapped around `client.entities`.
+- `server/`: zero-dependency Node email service (Resend sends + delivery
+  webhook). Runs as the `api` compose service on host port `8000`.
+- `src/pages/EmailEvents.jsx`: operator-only Resend event log at
+  `/admin/email-events` ("Email Log" in the sidebar, `role = 'admin'` only).
+- `supabase/migrations/`: SQL policies applied to the Supabase project.
+- `docker-compose.base44.yml`: sandbox runtime (file name is required by the
+  platform; the app itself has no Base44 dependency).
+
+## Working Notes
+
+- Screens import the API as `import { api } from "@/api/client"`.
+- Entity method signatures mirror the previous data layer:
+  `list(sort, limit)`, `filter(criteria, sort, limit)`, `get(id)`,
+  `create(data)`, `update(id, data)`, `delete(id)`. A sort of `"-field"` is
+  newest-first; the default is `-created_date`. Sorting by a column a table does
+  not have falls back to `-created_date` instead of failing.
+- Row level security is the access control: every table allows `authenticated`
+  users only. Never weaken a policy to make a screen work.
+- `public.profiles` mirrors each auth user (`id`, `email`, `full_name`,
+  `role`). A missing profile is created on first sign-in.
+- Run `npm run lint` and `npm run build` before finishing a change.
+
+## Sandbox runtime (`docker-compose.base44.yml`)
+
+`docker compose -f docker-compose.base44.yml up -d` runs two services.
+
+`app` (host port `3000`):
+
+- Node 22 running `npm install && npm run dev` (Vite) from the bind-mounted
+  checkout, so edits hot-reload. Host port `3000` maps to Vite's `:5173`.
+- Supabase credentials come from the platform env file `/run/base44/app.env`
+  (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). They are never committed.
+- `BASE44_PREVIEW_MODE=1` makes `vite.config.js` bind the dev server to
+  `0.0.0.0` and accept the preview host (`.<BASE44_SANDBOX_HOST_DOMAIN>`, e.g.
+  `3000-<sandbox id>.e2b.app`) so the preview proxy can reach it. Unset,
+  `npm run dev` keeps its default localhost binding and host checks.
+- The app talks to Supabase directly from the browser; the only local backend
+  is the email service.
+
+`api` (host port `8000`, in-container `8080`):
+
+- Runs `node server/index.js` with no install step and no `depends_on`. Its
+  healthcheck hits
+  `/health`, which reports whether Resend and the Supabase writer are configured
+  — a 200 with `resend: false` means a secret is missing, not that the service is
+  down.
+- Webhooks are called by third parties, so they target the api service's own
+  port host, `https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/...`, not the Vite
+  dev server.
+
+## Email (Resend)
+
+- `POST /api/hooks/supabase/send-email` is Supabase's *Send Email* auth hook: it
+  renders the verification code and sends it with Resend from
+  `noreply@myspaza-app.co.za`. Supabase needs the hook enabled with the endpoint
+  and secret in the dashboard; until then Supabase sends its own auth emails and
+  the app still works (the signup OTP flow is unchanged either way).
+- `POST /api/webhooks/resend` stores every Resend event in `public.email_event`.
+  `provider_event_id` (the Svix message id) is unique, so retries are idempotent.
+- Both routes verify the Standard Webhooks HMAC over the raw body
+  (`server/lib/webhook-signature.js`) and answer 503 when the matching secret is
+  missing, 401 when the signature is wrong.
+- Never log request bodies or email tokens: they carry verification codes.
+- Verify the service without the real secrets by running a second instance with
+  throwaway ones, e.g. inside the container:
+  `PORT=8099 RESEND_WEBHOOK_SECRET=whsec_<b64> node server/index.js`, then post a
+  payload signed the same way. `RESEND_API_KEY=re_invalid…` proves the send path
+  without delivering mail (Resend answers "API key is invalid" → 502).
+
+Verification note: the preview harness restores a signed-out session on every
+fresh page load, so pages behind `ProtectedRoute` can only be checked by signing
+in inside the preview pane (or by driving the login form in the same script that
+asserts the signed-in screen).
+
+## AI coach
+
+`src/pages/SpazaCoach.jsx` calls `api.integrations.Core.InvokeLLM`, which posts to
+the Supabase Edge Function `coach`. No such function ships in this repository;
+until one is deployed with a model provider key the page shows its "try again
+later" message. Business context in the prompt comes from Supabase tables.

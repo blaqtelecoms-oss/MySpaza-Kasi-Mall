@@ -1,0 +1,106 @@
+# Local sandbox runtime for My Spaza.
+#
+# Two services, both running from the bind-mounted checkout (nothing is baked
+# into an image, so every edit is picked up without a rebuild):
+#   app — the Vite dev server (live reload), talking to the app's Supabase
+#         project. Supabase credentials arrive from the platform-managed env
+#         file.
+#   api — the Resend email service in server/: sends Supabase auth emails
+#         (signup verification codes) and records Resend delivery webhooks.
+services:
+  app:
+    image: node:22
+    restart: on-failure
+    working_dir: /app
+    command:
+      - sh
+      - -ec
+      - |
+        npm install --no-audit --no-fund
+        exec npm run dev
+    environment:
+      # Bare pass-through: the platform sets these; the Vite config only binds a
+      # public interface and trusts the preview host when BASE44_PREVIEW_MODE=1.
+      - BASE44_PREVIEW_MODE
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+      - BASE44_PUBLIC_HOST_SUFFIX
+      - BASE44_SANDBOX_HOST_DOMAIN
+    env_file:
+      # Platform-managed secrets (Supabase URL + publishable key). Never in git,
+      # and listed last so dashboard values always win.
+      - /run/base44/app.env
+    volumes:
+      - .:/app
+    ports:
+      - "3000:5173"
+    labels:
+      base44.project: SpazaFlow
+      base44.kind: web
+      base44.port: "3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - |
+          const checks = {
+            page: 'http://127.0.0.1:5173/',
+            module: 'http://127.0.0.1:5173/src/main.jsx',
+          };
+          Promise.all(Object.entries(checks).map(([name, url]) =>
+            fetch(url).then((r) => r.status < 500).catch(() => false).then((ok) => [name, ok])
+          )).then((results) => {
+            const failed = results.filter(([, ok]) => !ok).map(([name]) => name);
+            if (failed.length === 0) process.exit(0);
+            console.log('unhealthy: ' + failed.join(', '));
+            process.exit(1);
+          });
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+  # Resend email service (server/): sends Supabase auth emails — the signup
+  # verification code — through Resend, and records Resend delivery webhooks.
+  # Zero npm dependencies (node:http + fetch), so it runs from the bind-mounted
+  # source with no install step.
+  api:
+    image: node:22
+    restart: on-failure
+    working_dir: /app
+    command: ["node", "server/index.js"]
+    environment:
+      - PORT=8080
+      # Sender for every auth email; the domain must be verified in Resend.
+      - RESEND_FROM_EMAIL=noreply@myspaza-app.co.za
+      - RESEND_FROM_NAME=My Spaza
+    env_file:
+      # RESEND_API_KEY, RESEND_WEBHOOK_SECRET and
+      # SUPABASE_SEND_EMAIL_HOOK_SECRET, plus VITE_SUPABASE_URL and
+      # SUPABASE_SERVICE_ROLE_KEY used to write the email log.
+      - /run/base44/app.env
+    volumes:
+      - .:/app
+    # Webhook endpoints are called by Resend and Supabase, so the service is
+    # reachable on its own port:
+    #   https://8000-${BASE44_PUBLIC_HOST_SUFFIX}/api/webhooks/resend
+    #   https://8000-${BASE44_PUBLIC_HOST_SUFFIX}/api/hooks/supabase/send-email
+    ports:
+      - "8000:8080"
+    labels:
+      base44.project: SpazaFlow Email
+      base44.kind: api
+      base44.port: "8000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - |
+          fetch('http://127.0.0.1:8080/health')
+            .then((r) => process.exit(r.ok ? 0 : 1))
+            .catch(() => process.exit(1));
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s

@@ -1,0 +1,32 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "VITE_SUPABASE_URL",
+      "description": "Supabase project URL the app reads and signs users in against.",
+      "requiredAtBoot": true
+    },
+    {
+      "name": "VITE_SUPABASE_ANON_KEY",
+      "description": "Supabase anon/publishable key used by the browser client (protected by row level security).",
+      "requiredAtBoot": true
+    },
+    {
+      "name": "RESEND_API_KEY",
+      "description": "Resend API key (Resend dashboard -> API Keys, Sending access). Used server-side to send signup verification and account emails from noreply@myspaza-app.co.za.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "RESEND_WEBHOOK_SECRET",
+      "description": "Signing secret of the Resend webhook that points at /api/webhooks/resend (Resend dashboard -> Webhooks -> signing secret, whsec_...). Verifies delivery events before they are stored.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "SUPABASE_SEND_EMAIL_HOOK_SECRET",
+      "description": "Secret generated when the Supabase Send Email auth hook is enabled (Auth -> Hooks, format v1,whsec_...). Verifies Supabase's hook requests to /api/hooks/supabase/send-email.",
+      "requiredAtBoot": false
+    }
+  ]
+}
