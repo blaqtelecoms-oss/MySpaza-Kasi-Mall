@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/api/client";
+import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ export default function Register() {
   const [showOtp, setShowOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const navigate = useNavigate();
+  const { checkUserAuth } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,6 +51,9 @@ export default function Register() {
     setLoading(true);
     try {
       await api.auth.verifyOtp({ email, otpCode });
+      // Load the new session into auth context before leaving this screen,
+      // otherwise ProtectedRoute still sees a signed-out user and bounces to /login.
+      await checkUserAuth();
       navigate("/", { replace: true });
     } catch (err) {
       setError(err.message || "Invalid verification code");

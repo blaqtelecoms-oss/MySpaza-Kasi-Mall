@@ -77,6 +77,10 @@ See `README.md` for local setup, environment variables and the Supabase schema.
   Supabase silently swaps a non-allowlisted `redirect_to` for `site_url`, so a
   stale allowlist sends Google sign-in and email links to the wrong host instead
   of failing loudly.
+- `mailer_otp_length` must stay **6**: the signup screen (`Register.jsx`) has six
+  OTP boxes, so an 8-digit project setting makes every emailed code impossible to
+  enter ("Token has expired or is invalid"). Emails carry the code Supabase
+  generates, so the project setting — not the email template — decides the length.
 - Google auth is enabled; the Google Cloud OAuth client needs
   `https://<project-ref>.supabase.co/auth/v1/callback` as an authorised redirect
   URI. The client id/secret live only in Supabase, never in this repo.
