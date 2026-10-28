@@ -69,6 +69,18 @@ See `README.md` for local setup, environment variables and the Supabase schema.
   port host, `https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/...`, not the Vite
   dev server.
 
+## Supabase auth settings (project-level, not in this repo)
+
+- `site_url` is `https://myspaza-app.co.za`; `uri_allow_list` must contain the
+  production domain, the sandbox preview origin
+  (`https://*.imported.base44-preview.app/**`) and `http://localhost:3000/**`.
+  Supabase silently swaps a non-allowlisted `redirect_to` for `site_url`, so a
+  stale allowlist sends Google sign-in and email links to the wrong host instead
+  of failing loudly.
+- Google auth is enabled; the Google Cloud OAuth client needs
+  `https://<project-ref>.supabase.co/auth/v1/callback` as an authorised redirect
+  URI. The client id/secret live only in Supabase, never in this repo.
+
 ## Email (Resend)
 
 - `POST /api/hooks/supabase/send-email` is Supabase's *Send Email* auth hook: it
