@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -6,7 +6,7 @@ import {
   Users, Truck, BookOpen, BarChart2, Settings, Menu, X, Bell,
   Building2, GraduationCap, Bot, CreditCard, ChevronDown, ChevronRight,
   Banknote, UserCheck, Calculator, RefreshCw, Wallet, ArrowLeft, TrendingDown, Receipt,
-  MailSearch
+  MailSearch, LogOut
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useAuth } from "@/lib/AuthContext";
@@ -38,12 +38,38 @@ const navItems = [
 ];
 
 export default function Layout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const visibleNavItems = navItems.filter((item) => !item.adminOnly || user?.role === "admin");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [btnRefreshing, setBtnRefreshing] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const profileRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const userInitial = (user?.full_name || user?.email || "?").trim().charAt(0).toUpperCase();
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handleOutside = (event) => {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [profileOpen]);
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await logout(true);
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   const handleRefresh = async () => {
     if (btnRefreshing) return;
@@ -176,8 +202,46 @@ export default function Layout() {
               <Bell size={20} className="text-gray-600 dark:text-gray-300" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
-            <div className="w-8 h-8 bg-[#0D0D0D] rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-bold">O</span>
+            <div className="relative" ref={profileRef}>
+              <button
+                type="button"
+                onClick={() => setProfileOpen((open) => !open)}
+                aria-label="Profile menu"
+                aria-expanded={profileOpen}
+                className="w-8 h-8 bg-[#0D0D0D] rounded-full flex items-center justify-center ring-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD426] hover:opacity-90 transition-opacity"
+              >
+                <span className="text-white text-sm font-bold">{userInitial}</span>
+              </button>
+
+              {profileOpen && (
+                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg overflow-hidden z-50">
+                  <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
+                      {user?.full_name || "My account"}
+                    </p>
+                    {user?.email && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                    )}
+                  </div>
+                  <Link
+                    to="/settings"
+                    onClick={() => setProfileOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <Settings size={16} />
+                    Settings
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    disabled={signingOut}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
+                  >
+                    <LogOut size={16} />
+                    {signingOut ? "Signing out…" : "Sign out"}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
