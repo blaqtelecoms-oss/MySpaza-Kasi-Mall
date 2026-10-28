@@ -140,14 +140,31 @@ npm run build
   | WholesalerDiscount | `wholesaler_discount` |
   | BulkBuy | `bulk_buy` |
 
-  Every table has RLS enabled with an `authenticated` policy, matching the
-  app's single-shop sharing model.
+  Every table has RLS enabled with an owner policy
+  (`created_by_id = auth.uid()`), so each account only sees and edits its own
+  shop's rows. See [Data ownership](#data-ownership).
 - **Storage** — product photos go to the public `inventory-media` bucket; the
   write policy lives in `supabase/migrations/`.
 - **AI coach** — `Spaza Coach` calls a Supabase Edge Function named `coach`
   (`POST /functions/v1/coach` with `{ prompt }`, returns `{ text }`). Deploy
   that function with your own model provider key to enable live answers; without
   it the page shows a friendly "try again later" message.
+
+## Data ownership
+
+Each account is isolated at the database level (see
+`supabase/migrations/20261028_user_owned_data.sql`):
+
+- Every app table allows `authenticated` access only to rows where
+  `created_by_id = auth.uid()`. New rows take their owner from the session,
+  and a payload cannot claim another user's id.
+- A brand-new account starts with an empty shop: no sample or other-owner rows.
+- Rows with no identifiable owner (the imported `service_…` account) stay in the
+  database but are invisible to ordinary users.
+- `profiles` is per-user readable; `email_event` and `media_assets` are
+  operator-only (`role = 'admin'`).
+- The device cache (offline reads, queued writes, persisted queries) is cleared
+  whenever a different account signs in on the same browser.
 
 ## Project layout
 

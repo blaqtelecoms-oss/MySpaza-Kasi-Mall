@@ -127,7 +127,9 @@ async function stamp(record) {
     ...record,
     created_date: record.created_date || now,
     updated_date: now,
-    created_by_id: record.created_by_id || userId,
+    // Ownership always comes from the session, never from the payload: row
+    // level security only accepts rows owned by the signed-in user.
+    created_by_id: userId || record.created_by_id,
   };
 }
 
@@ -192,7 +194,7 @@ function makeEntity(entity) {
           id: payload.id || newId(),
           created_date: payload.created_date || now,
           updated_date: now,
-          created_by_id: payload.created_by_id || userId,
+          created_by_id: userId || payload.created_by_id,
         })
       );
       return unwrap(await supabase.from(name).insert(rows).select());

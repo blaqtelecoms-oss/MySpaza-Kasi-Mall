@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { api } from '@/api/client';
 import { supabase } from '@/api/supabase';
+import { syncCacheOwner } from '@/lib/userDataReset';
 
 const AuthContext = createContext();
 
@@ -14,6 +15,10 @@ export const AuthProvider = ({ children }) => {
 
   // Loads the signed-in user (auth account + profile) into context.
   const applySession = useCallback(async (session) => {
+    // Cached data on this device belongs to whoever was signed in when it was
+    // written, so a different account (or a signed-out browser) starts clean.
+    await syncCacheOwner(session?.user?.id);
+
     if (!session?.user) {
       setUser(null);
       setIsAuthenticated(false);

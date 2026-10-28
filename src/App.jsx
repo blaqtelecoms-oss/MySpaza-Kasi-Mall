@@ -124,7 +124,7 @@ function App() {
       <AuthProvider>
         <PersistQueryClientProvider
           client={queryClientInstance}
-          persistOptions={{ persister: queryPersister, maxAge: 1000 * 60 * 60 * 24 * 7, buster: 'v1' }}
+          persistOptions={{ persister: queryPersister, maxAge: 1000 * 60 * 60 * 24 * 7, buster: 'v2' }}
         >
           <Router>
             <ScrollToTop />

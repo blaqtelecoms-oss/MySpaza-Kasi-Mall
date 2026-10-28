@@ -35,11 +35,36 @@ See `README.md` for local setup, environment variables and the Supabase schema.
   `create(data)`, `update(id, data)`, `delete(id)`. A sort of `"-field"` is
   newest-first; the default is `-created_date`. Sorting by a column a table does
   not have falls back to `-created_date` instead of failing.
-- Row level security is the access control: every table allows `authenticated`
-  users only. Never weaken a policy to make a screen work.
+- Row level security is the access control: every app table is owned by the
+  signed-in user (`created_by_id = auth.uid()`), so one account never sees
+  another's records. Never weaken a policy to make a screen work.
 - `public.profiles` mirrors each auth user (`id`, `email`, `full_name`,
   `role`). A missing profile is created on first sign-in.
 - Run `npm run lint` and `npm run build` before finishing a change.
+
+## Data ownership (multi-tenant)
+
+`supabase/migrations/20261028_user_owned_data.sql` applies the isolation model;
+re-run it after a schema change.
+
+- Every app table has one policy, `<table>_owner_all`, for `authenticated`:
+  `using (created_by_id = auth.uid()::text)` and the same `with check`. A new
+  account therefore starts with an empty workspace, and rows with no
+  identifiable owner (`created_by_id is null`, or the imported `service_…`
+  account) are invisible to everyone — they are kept, not deleted.
+- `created_by_id` defaults to `auth.uid()::text`, and `client.js` always stamps
+  it from the session, never from the payload. Writing someone else's id gets a
+  403 from the policy.
+- `profiles`: a user reads and edits only their own row; `is_admin()` sees all.
+  A trigger (`profiles_guard_role`) silently keeps `role` unchanged unless the
+  caller is already an admin, so nobody can promote themselves.
+- `email_event` and `media_assets` are operator-only (`is_admin()`). The
+  `inventory-media` bucket stays public, so product photos keep working.
+- Imported rows carry the old 24-character user id; the migration maps them to
+  the account's auth id through `profiles.base44_id` so owners keep their data.
+- Device caches (`src/lib/userDataReset.js`) are wiped whenever the signed-in
+  identity changes, so an offline cache or queued write can never leak between
+  accounts on a shared browser.
 
 ## Sandbox runtime (`docker-compose.base44.yml`)
 
