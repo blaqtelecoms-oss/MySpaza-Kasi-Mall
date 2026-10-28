@@ -20,6 +20,9 @@ const TABLES = {
   PurchaseOrder: "purchase_order",
   Sale: "sale",
   SavingsGroup: "savings_group",
+  ShopInvite: "shop_invite",
+  ShopMember: "shop_member",
+  ShopSettings: "shop_settings",
   StockAdjustment: "stock_adjustment",
   StockfellAccount: "stockfell_account",
   Supplier: "supplier",
@@ -120,14 +123,43 @@ async function currentUserId() {
   return session?.user?.id ?? null;
 }
 
+// A shop is the owner's account: rows an employee writes belong to the shop
+// they work in, not to the employee's own account. Cached per signed-in user so
+// every write does not re-read the membership.
+let shopIdCache = { userId: null, shopId: null };
+
+/** The shop whose data the signed-in user works in (their own, or employer's). */
+async function currentShopId() {
+  const userId = await currentUserId();
+  if (!userId) return null;
+  if (shopIdCache.userId === userId) return shopIdCache.shopId;
+
+  const { data } = await supabase
+    .from("shop_member")
+    .select("shop_id, status")
+    .eq("member_id", userId)
+    .maybeSingle();
+
+  const shopId = data?.status === "active" ? data.shop_id : userId;
+  shopIdCache = { userId, shopId };
+  return shopId;
+}
+
+/** Forget the cached shop (after accepting an invitation, or signing out). */
+export function resetShopCache() {
+  shopIdCache = { userId: null, shopId: null };
+}
+
 async function stamp(record) {
   const now = new Date().toISOString();
-  const userId = await currentUserId();
+  const shopId = await currentShopId();
   return {
     ...record,
     created_date: record.created_date || now,
     updated_date: now,
-    created_by_id: record.created_by_id || userId,
+    // Ownership always comes from the session, never from the payload: row
+    // level security only accepts rows owned by the signed-in user's shop.
+    created_by_id: shopId || record.created_by_id,
   };
 }
 
@@ -184,7 +216,7 @@ function makeEntity(entity) {
 
     async bulkCreate(payloads = []) {
       if (payloads.length === 0) return [];
-      const userId = await currentUserId();
+      const shopId = await currentShopId();
       const now = new Date().toISOString();
       const rows = payloads.map((payload) =>
         stripUndefined({
@@ -192,7 +224,7 @@ function makeEntity(entity) {
           id: payload.id || newId(),
           created_date: payload.created_date || now,
           updated_date: now,
-          created_by_id: payload.created_by_id || userId,
+          created_by_id: shopId || payload.created_by_id,
         })
       );
       return unwrap(await supabase.from(name).insert(rows).select());
@@ -413,14 +445,22 @@ async function invokeCoachFunction(prompt) {
 
 const integrations = {
   Core: {
-    async UploadPublicFile({ file }) {
+    /**
+     * Upload a file to a public bucket and return its public URL.
+     * `bucket` defaults to the product-media bucket; the shop logo passes
+     * "shop-logos". Objects are stored under the signed-in user's folder,
+     * which is what the storage policies scope writes to.
+     */
+    async UploadPublicFile({ file, bucket = MEDIA_BUCKET }) {
       const extension = (file.name?.split(".").pop() || "bin").toLowerCase();
-      const path = `${newId()}.${extension}`;
+      const userId = await currentUserId();
+      if (!userId) throw new Error("You must be signed in to upload files.");
+      const path = `${userId}/${newId()}.${extension}`;
       const { error } = await supabase.storage
-        .from(MEDIA_BUCKET)
+        .from(bucket)
         .upload(path, file, { contentType: file.type, upsert: false });
       if (error) throw new Error(error.message);
-      const { data } = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(path);
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
       return { file_url: data.publicUrl };
     },
 
@@ -430,7 +470,107 @@ const integrations = {
   },
 };
 
-export const api = { entities, auth, integrations };
+/**
+ * Shop membership: which shop the signed-in account works in, their role and
+ * the modules they may use. Owners get every module; employees get exactly what
+ * the owner granted (also enforced by row level security, not just this UI).
+ */
+const shop = {
+  async context() {
+    const userId = await currentUserId();
+    if (!userId) return null;
+
+    const { data: membership } = await supabase
+      .from("shop_member")
+      .select("*")
+      .eq("member_id", userId)
+      .maybeSingle();
+
+    const active = membership?.status === "active" ? membership : null;
+    const shopId = active?.shop_id || userId;
+
+    let shopName = null;
+    const { data: settings } = await supabase
+      .from("shop_settings")
+      .select("business")
+      .eq("created_by_id", shopId)
+      .maybeSingle();
+    shopName = settings?.business?.name?.trim() || null;
+
+    if (!shopName) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name,email")
+        .eq("id", shopId)
+        .maybeSingle();
+      shopName = profile?.full_name || profile?.email || null;
+    }
+
+    return {
+      shopId,
+      shopName,
+      isOwner: !active,
+      role: active?.role || "Owner",
+      permissions: active?.permissions || {},
+      memberId: active?.member_id || null,
+      memberEmail: active?.member_email || null,
+    };
+  },
+
+  /** Ask the email service to create the invitation and send it with Resend. */
+  async invite({ email, role, permissions }) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Sign in to invite employees.");
+
+    const response = await fetch("/api/invitations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ email, role, permissions }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Invitation failed (${response.status})`);
+    return body;
+  },
+
+  /** Shop, role and modules behind an invitation link (works signed out). */
+  async invitePreview(token) {
+    const { data, error } = await supabase.rpc("shop_invite_preview", { p_token: token });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Accept the invitation for the signed-in account. */
+  async acceptInvite(token) {
+    const { data, error } = await supabase.rpc("accept_shop_invite", { p_token: token });
+    if (error) throw new Error(error.message);
+    resetShopCache();
+    return data;
+  },
+
+  /** Owner: change an employee's role or modules. */
+  async updateMember(memberId, { role, permissions }) {
+    const { data, error } = await supabase
+      .from("shop_member")
+      .update({ role, permissions, updated_date: new Date().toISOString() })
+      .eq("id", memberId)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Owner: remove an employee's access. */
+  async removeMember(memberId) {
+    const { error } = await supabase.from("shop_member").delete().eq("id", memberId);
+    if (error) throw new Error(error.message);
+    return { id: memberId };
+  },
+};
+
+export const api = { entities, auth, integrations, shop };
 
 // Transparent offline caching + write queueing over the entity layer.
 installOfflineLayer(api);

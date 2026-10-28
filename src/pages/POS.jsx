@@ -16,6 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useToast } from "@/components/ui/use-toast";
 import CartContents from "@/components/pos/CartContents";
+import { toShopSettings } from "@/lib/shopSettings";
+import { printReceipt } from "@/lib/receipt";
 
 const formatCurrency = (amount) => `R ${(amount || 0).toFixed(2)}`;
 
@@ -42,6 +44,9 @@ export default function POS() {
   const products = productsQuery.data || [];
   const customersQuery = useEntityQuery("Customer", "filter", [{ is_active: true }]);
   const customers = customersQuery.data || [];
+  // Business details, logo and receipt options saved in Settings.
+  const shopSettingsQuery = useEntityQuery("ShopSettings", "filter", [{}]);
+  const shopSettings = toShopSettings(shopSettingsQuery.data?.[0]);
   const invalidateProduct = useInvalidateEntity();
   const queryClient = useQueryClient();
   const [cart, setCart] = useState([]);
@@ -517,7 +522,11 @@ export default function POS() {
               )}
             </div>
             <div className="flex gap-2 mt-4">
-              <Button variant="outline" className="flex-1 gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 gap-2"
+                onClick={() => printReceipt(lastSale, shopSettings)}
+              >
                 <Printer size={16} /> Print
               </Button>
               <Button variant="outline" className="flex-1 gap-2">

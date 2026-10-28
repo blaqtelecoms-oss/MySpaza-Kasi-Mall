@@ -1,6 +1,7 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { api } from '@/api/client';
 import { supabase } from '@/api/supabase';
+import { syncCacheOwner, clearUserData } from '@/lib/userDataReset';
 
 const AuthContext = createContext();
 
@@ -11,11 +12,51 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  // Which shop this account works in (their own, or the shop that invited
+  // them), with the role and modules the owner granted.
+  const [shopContext, setShopContext] = useState(null);
+  const shopContextRef = useRef(null);
+
+  // Reads the membership. An employee who loses access must not keep the shop's
+  // cached records on this device, so a change of shop clears the cache.
+  const refreshShop = useCallback(async () => {
+    let next = null;
+    try {
+      next = await api.shop.context();
+    } catch {
+      next = null;
+    }
+    const previous = shopContextRef.current;
+    if (previous?.memberId && (!next || next.shopId !== previous.shopId)) {
+      await clearUserData();
+    }
+    shopContextRef.current = next;
+    setShopContext(next);
+    return next;
+  }, []);
+
+  const can = useCallback((module) => {
+    if (!shopContext) return false;
+    if (shopContext.isOwner) return true;
+    return Boolean(shopContext.permissions?.[module]);
+  }, [shopContext]);
+
+  const canEditModule = useCallback((module) => {
+    if (!shopContext) return false;
+    if (shopContext.isOwner) return true;
+    return shopContext.permissions?.[module] === 'edit';
+  }, [shopContext]);
 
   // Loads the signed-in user (auth account + profile) into context.
   const applySession = useCallback(async (session) => {
+    // Cached data on this device belongs to whoever was signed in when it was
+    // written, so a different account (or a signed-out browser) starts clean.
+    await syncCacheOwner(session?.user?.id);
+
     if (!session?.user) {
       setUser(null);
+      setShopContext(null);
+      shopContextRef.current = null;
       setIsAuthenticated(false);
       setAuthError(null);
       setIsLoadingAuth(false);
@@ -27,6 +68,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const currentUser = await api.auth.me();
       setUser(currentUser);
+      await refreshShop();
       setIsAuthenticated(true);
       setAuthError(currentUser.disabled ? { type: 'user_not_registered', message: 'Account disabled' } : null);
     } catch (error) {
@@ -39,7 +81,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingPublicSettings(false);
       setAuthChecked(true);
     }
-  }, []);
+  }, [refreshShop]);
 
   useEffect(() => {
     let active = true;
@@ -76,6 +118,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(async (shouldRedirect = true) => {
     setUser(null);
+    setShopContext(null);
+    shopContextRef.current = null;
     setIsAuthenticated(false);
     await api.auth.logout(shouldRedirect ? window.location.href : undefined);
   }, []);
@@ -93,6 +137,11 @@ export const AuthProvider = ({ children }) => {
       authError,
       appPublicSettings: null,
       authChecked,
+      shop: shopContext,
+      isShopOwner: Boolean(shopContext?.isOwner),
+      can,
+      canEdit: canEditModule,
+      refreshShop,
       logout,
       navigateToLogin,
       checkUserAuth,

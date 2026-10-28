@@ -21,6 +21,8 @@ See `README.md` for local setup, environment variables and the Supabase schema.
   cache and write queue wrapped around `client.entities`.
 - `server/`: zero-dependency Node email service (Resend sends + delivery
   webhook). Runs as the `api` compose service on host port `8000`.
+- `public/brand/auth-bg.jpg`: sign-in hero photo (grocery shelves), CC0 from
+  Wikimedia Commons ("Grocery Outlet - September 2024" by Sarah Stierch).
 - `src/pages/EmailEvents.jsx`: operator-only Resend event log at
   `/admin/email-events` ("Email Log" in the sidebar, `role = 'admin'` only).
 - `supabase/migrations/`: SQL policies applied to the Supabase project.
@@ -35,11 +37,79 @@ See `README.md` for local setup, environment variables and the Supabase schema.
   `create(data)`, `update(id, data)`, `delete(id)`. A sort of `"-field"` is
   newest-first; the default is `-created_date`. Sorting by a column a table does
   not have falls back to `-created_date` instead of failing.
-- Row level security is the access control: every table allows `authenticated`
-  users only. Never weaken a policy to make a screen work.
+- Row level security is the access control: every app table is owned by the
+  signed-in user (`created_by_id = auth.uid()`), so one account never sees
+  another's records. Never weaken a policy to make a screen work.
 - `public.profiles` mirrors each auth user (`id`, `email`, `full_name`,
   `role`). A missing profile is created on first sign-in.
 - Run `npm run lint` and `npm run build` before finishing a change.
+
+## Data ownership (multi-tenant)
+
+`supabase/migrations/20261028_user_owned_data.sql` applies the isolation model;
+re-run it after a schema change.
+
+- Every app table has one policy, `<table>_owner_all`, for `authenticated`:
+  `using (created_by_id = auth.uid()::text)` and the same `with check`. A new
+  account therefore starts with an empty workspace, and rows with no
+  identifiable owner (`created_by_id is null`, or the imported `service_…`
+  account) are invisible to everyone — they are kept, not deleted.
+- `created_by_id` defaults to `auth.uid()::text`, and `client.js` always stamps
+  it from the session, never from the payload. Writing someone else's id gets a
+  403 from the policy.
+- `profiles`: a user reads and edits only their own row; `is_admin()` sees all.
+  A trigger (`profiles_guard_role`) silently keeps `role` unchanged unless the
+  caller is already an admin, so nobody can promote themselves.
+- `email_event` and `media_assets` are operator-only (`is_admin()`). The
+  `inventory-media` bucket stays public, so product photos keep working.
+- Storage uploads are filed under a folder named after the owner's auth id
+  (`client.js` → `UploadPublicFile`), because the write policies scope inserts
+  to `(storage.foldername(name))[1] = auth.uid()::text`.
+- `public.shop_settings` (migration `20261028_shop_logo_and_settings.sql`) keeps
+  one row per account (`unique created_by_id`) holding `business` and `receipt`
+  jsonb blobs plus `logo_url`; the Settings screen and the POS receipt read the
+  same row. The shop logo goes to the public `shop-logos` bucket (see
+  `src/lib/shopSettings.js`), so the printed receipt can load it.
+- Imported rows carry the old 24-character user id; the migration maps them to
+  the account's auth id through `profiles.base44_id` so owners keep their data.
+
+## Employees (invitations + module permissions)
+
+`supabase/migrations/20261028_shop_employees.sql` adds the team model.
+
+- A **shop is the owner's account**: `shop_member.shop_id` is the owner's auth
+  uid, which is also the `created_by_id` on every row. `client.js` stamps
+  `created_by_id` with the *shop* the signed-in user works in (`currentShopId`,
+  cached per user), so an employee's writes belong to the shop, not to them.
+- `shop_member.permissions` maps a module key to `"view"` or `"edit"`; the keys
+  live in `src/lib/modules.js` and must match `server/lib/modules.js`. One shop
+  per employee (`shop_member.member_id` is unique).
+- Enforcement is in Postgres: every app table's policy is now
+  `created_by_id = auth.uid() or public.shop_module_level(created_by_id, <modules>)`
+  for reads, and `... = 'edit'` for writes. The nav (`Layout.jsx`), the route
+  guards (`RequireAccess.jsx`) and the permission editor only mirror that — if a
+  screen is gated wrong, the database still refuses the data.
+- `Employees` (`/employees`) and `Settings` (`/settings`) are owner-only routes;
+  `shop_member` writes are owner-only by policy.
+- Invitations: the owner's browser POSTs `/api/invitations` (same origin, proxied
+  to the `api` service by `vite.config.js`). `server/lib/shop-invite.js` verifies
+  the Supabase access token, takes the shop from **the caller**, stores only a
+  SHA-256 token hash in `shop_invite` (7-day expiry, one open invite per email)
+  and emails the link with Resend. `APP_URL` sets the link base.
+- Acceptance: `/invite/<token>` reads `shop_invite_preview()` (safe signed out)
+  and calls `accept_shop_invite()`, which requires the signed-in address to match
+  the invited one and refuses a second shop. Sign-in/registration honour
+  `?next=/invite/<token>` (`src/lib/redirect.js`).
+- An employee whose membership disappears has this device's cache wiped
+  (`AuthContext.refreshShop` → `clearUserData`), so revoked access does not
+  leave the shop's records in an offline cache.
+- Verify without a second person: create a throwaway auth user with the service
+  role, sign in through `/auth/v1/token?grant_type=password`, then call the RPCs
+  and the REST tables with that JWT. `RESEND_API_KEY=re_invalid…` on a second
+  server instance proves the invite send path without delivering mail.
+- Device caches (`src/lib/userDataReset.js`) are wiped whenever the signed-in
+  identity changes, so an offline cache or queued write can never leak between
+  accounts on a shared browser.
 
 ## Sandbox runtime (`docker-compose.base44.yml`)
 
@@ -69,6 +139,22 @@ See `README.md` for local setup, environment variables and the Supabase schema.
   port host, `https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/...`, not the Vite
   dev server.
 
+## Supabase auth settings (project-level, not in this repo)
+
+- `site_url` is `https://myspaza-app.co.za`; `uri_allow_list` must contain the
+  production domain, the sandbox preview origin
+  (`https://*.imported.base44-preview.app/**`) and `http://localhost:3000/**`.
+  Supabase silently swaps a non-allowlisted `redirect_to` for `site_url`, so a
+  stale allowlist sends Google sign-in and email links to the wrong host instead
+  of failing loudly.
+- `mailer_otp_length` must stay **6**: the signup screen (`Register.jsx`) has six
+  OTP boxes, so an 8-digit project setting makes every emailed code impossible to
+  enter ("Token has expired or is invalid"). Emails carry the code Supabase
+  generates, so the project setting — not the email template — decides the length.
+- Google auth is enabled; the Google Cloud OAuth client needs
+  `https://<project-ref>.supabase.co/auth/v1/callback` as an authorised redirect
+  URI. The client id/secret live only in Supabase, never in this repo.
+
 ## Email (Resend)
 
 - `POST /api/hooks/supabase/send-email` is Supabase's *Send Email* auth hook: it
@@ -76,6 +162,14 @@ See `README.md` for local setup, environment variables and the Supabase schema.
   `noreply@myspaza-app.co.za`. Supabase needs the hook enabled with the endpoint
   and secret in the dashboard; until then Supabase sends its own auth emails and
   the app still works (the signup OTP flow is unchanged either way).
+- Supabase still enforces its own auth-email send rate limit
+  (`rate_limit_email_sent`) *before* calling the hook, so a low value returns
+  "email rate limit exceeded" even though the hook works. It is a per-project
+  setting (Auth → Rate Limits, or `PATCH /v1/projects/{ref}/config/auth`); this
+  project runs at 200 per hour (Resend's plan limits still apply below it).
+- The hook URI points at the sandbox host `https://8000-$BASE44_PUBLIC_HOST_SUFFIX/...`,
+  so it must be pointed at the real domain on deploy (and re-pointed if the
+  sandbox is recreated).
 - `POST /api/webhooks/resend` stores every Resend event in `public.email_event`.
   `provider_event_id` (the Svix message id) is unique, so retries are idempotent.
 - Both routes verify the Standard Webhooks HMAC over the raw body

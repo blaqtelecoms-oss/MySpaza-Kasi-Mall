@@ -24,6 +24,7 @@ Both are read by the browser at build/dev time:
 | `RESEND_API_KEY` | Resend API key used by `server/` to send signup and account emails |
 | `RESEND_WEBHOOK_SECRET` | Signing secret of the Resend webhook (`whsec_…`) |
 | `SUPABASE_SEND_EMAIL_HOOK_SECRET` | Secret of the Supabase *Send Email* auth hook (`v1,whsec_…`) |
+| `APP_URL` | Public base URL used in employee invitation links (e.g. `https://myspaza-app.co.za`) |
 
 The browser only reads the two `VITE_*` values; the Resend and hook secrets are
 server-side only and are never bundled into the frontend.
@@ -140,14 +141,58 @@ npm run build
   | WholesalerDiscount | `wholesaler_discount` |
   | BulkBuy | `bulk_buy` |
 
-  Every table has RLS enabled with an `authenticated` policy, matching the
-  app's single-shop sharing model.
-- **Storage** — product photos go to the public `inventory-media` bucket; the
-  write policy lives in `supabase/migrations/`.
+  Every table has RLS enabled with an owner policy
+  (`created_by_id = auth.uid()`), so each account only sees and edits its own
+  shop's rows. See [Data ownership](#data-ownership).
+- **Storage** — product photos go to the public `inventory-media` bucket and the
+  shop logo to the public `shop-logos` bucket; the write policies (scoped to the
+  owner's user-id folder) live in `supabase/migrations/`.
+- **Shop settings** — `public.shop_settings` holds one row per account (business
+  details, receipt options, `logo_url`). The Settings screen saves it and the POS
+  receipt prints from it (`src/lib/receipt.js`).
 - **AI coach** — `Spaza Coach` calls a Supabase Edge Function named `coach`
   (`POST /functions/v1/coach` with `{ prompt }`, returns `{ text }`). Deploy
   that function with your own model provider key to enable live answers; without
   it the page shows a friendly "try again later" message.
+
+## Employees
+
+Each shop owner can invite employees by email and decide exactly what each one
+may see and do (`/employees`, or **Employees** in the sidebar).
+
+1. **Invite** — the owner enters an email, picks a role and sets each module to
+   *None*, *View* or *Edit*. `POST /api/invitations` (served by `server/`)
+   verifies the owner's Supabase session, stores the invitation with a hashed
+   token and emails the link with Resend. Links expire after 7 days, work once,
+   and only for the invited address.
+2. **Accept** — `/invite/<token>` shows the shop, role and modules. After signing
+   in (or creating an account with the invited address) the employee accepts and
+   is attached to that one shop.
+3. **Work** — the employee sees the shop name and their role in the app and only
+   the modules granted to them. `View` modules are read-only; `Edit` modules can
+   create and change records. Employees never see Employees or Settings.
+4. **Change access** — the owner edits a role/permission set or removes the
+   employee; the change applies to the very next request.
+
+Module permissions are enforced by row level security
+(`supabase/migrations/20261028_shop_employees.sql`), not only by the menu, so a
+crafted API call cannot reach a module the owner did not grant.
+
+## Data ownership
+
+Each account is isolated at the database level (see
+`supabase/migrations/20261028_user_owned_data.sql`):
+
+- Every app table allows `authenticated` access only to rows where
+  `created_by_id = auth.uid()`. New rows take their owner from the session,
+  and a payload cannot claim another user's id.
+- A brand-new account starts with an empty shop: no sample or other-owner rows.
+- Rows with no identifiable owner (the imported `service_…` account) stay in the
+  database but are invisible to ordinary users.
+- `profiles` is per-user readable; `email_event` and `media_assets` are
+  operator-only (`role = 'admin'`).
+- The device cache (offline reads, queued writes, persisted queries) is cleared
+  whenever a different account signs in on the same browser.
 
 ## Project layout
 

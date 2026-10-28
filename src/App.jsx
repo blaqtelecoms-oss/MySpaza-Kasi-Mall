@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { RequireOwner, RequireModule } from '@/components/RequireAccess';
 import Layout from '@/components/Layout';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -37,6 +38,7 @@ const FundingHub = lazy(() => import('@/pages/FundingHub'));
 const MySpazaCard = lazy(() => import('@/pages/MySpazaCard'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const EmailEvents = lazy(() => import('@/pages/EmailEvents'));
+const AcceptInvite = lazy(() => import('@/pages/AcceptInvite'));
 
 const PageLoader = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -88,27 +90,29 @@ const AuthenticatedApp = () => {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        {/* Invitation link from the owner's email: works signed out. */}
+        <Route path="/invite/:token" element={<AcceptInvite />} />
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/pos" element={<POS />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/cashup" element={<CashUp />} />
-            <Route path="/daily-sales" element={<DailySales />} />
-            <Route path="/banking" element={<Banking />} />
-            <Route path="/accounting" element={<Accounting />} />
-            <Route path="/expenses" element={<Expenses />} />
-            <Route path="/suppliers" element={<Suppliers />} />
-            <Route path="/customers" element={<Customers />} />
-            <Route path="/debtors" element={<DebtorsControl />} />
-            <Route path="/employees" element={<Employees />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/academy" element={<Academy />} />
-            <Route path="/calculators" element={<Calculators />} />
-            <Route path="/coach" element={<SpazaCoach />} />
-            <Route path="/funding" element={<FundingHub />} />
-            <Route path="/myspaza-card" element={<MySpazaCard />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/pos" element={<RequireModule module="pos"><POS /></RequireModule>} />
+            <Route path="/inventory" element={<RequireModule module="inventory"><Inventory /></RequireModule>} />
+            <Route path="/cashup" element={<RequireModule module="cashup"><CashUp /></RequireModule>} />
+            <Route path="/daily-sales" element={<RequireModule module="daily_sales"><DailySales /></RequireModule>} />
+            <Route path="/banking" element={<RequireModule module="banking"><Banking /></RequireModule>} />
+            <Route path="/accounting" element={<RequireModule module="accounting"><Accounting /></RequireModule>} />
+            <Route path="/expenses" element={<RequireModule module="expenses"><Expenses /></RequireModule>} />
+            <Route path="/suppliers" element={<RequireModule module="suppliers"><Suppliers /></RequireModule>} />
+            <Route path="/customers" element={<RequireModule module="customers"><Customers /></RequireModule>} />
+            <Route path="/debtors" element={<RequireModule module="debtors"><DebtorsControl /></RequireModule>} />
+            <Route path="/employees" element={<RequireOwner><Employees /></RequireOwner>} />
+            <Route path="/reports" element={<RequireModule module="reports"><Reports /></RequireModule>} />
+            <Route path="/academy" element={<RequireModule module="academy"><Academy /></RequireModule>} />
+            <Route path="/calculators" element={<RequireModule module="calculators"><Calculators /></RequireModule>} />
+            <Route path="/coach" element={<RequireModule module="coach"><SpazaCoach /></RequireModule>} />
+            <Route path="/funding" element={<RequireModule module="funding"><FundingHub /></RequireModule>} />
+            <Route path="/myspaza-card" element={<RequireModule module="myspaza_card"><MySpazaCard /></RequireModule>} />
+            <Route path="/settings" element={<RequireOwner><Settings /></RequireOwner>} />
             <Route path="/admin/email-events" element={<EmailEvents />} />
           </Route>
         </Route>
@@ -124,7 +128,7 @@ function App() {
       <AuthProvider>
         <PersistQueryClientProvider
           client={queryClientInstance}
-          persistOptions={{ persister: queryPersister, maxAge: 1000 * 60 * 60 * 24 * 7, buster: 'v1' }}
+          persistOptions={{ persister: queryPersister, maxAge: 1000 * 60 * 60 * 24 * 7, buster: 'v2' }}
         >
           <Router>
             <ScrollToTop />

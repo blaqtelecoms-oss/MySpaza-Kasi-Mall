@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNextPath } from "@/lib/redirect";
 import { api } from "@/api/client";
+import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +13,9 @@ import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
 
 export default function Register() {
-  const [email, setEmail] = useState("");
+  // An invitation link opens this page with the invited address prefilled.
+  const [searchParams] = useSearchParams();
+  const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -19,6 +23,8 @@ export default function Register() {
   const [showOtp, setShowOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const navigate = useNavigate();
+  const nextPath = useNextPath();
+  const { checkUserAuth } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,7 +39,7 @@ export default function Register() {
       // With email confirmation disabled Supabase returns a session straight
       // away; otherwise the account has to be verified with the emailed code.
       if (result?.session) {
-        navigate("/", { replace: true });
+        navigate(nextPath, { replace: true });
         return;
       }
       setShowOtp(true);
@@ -49,7 +55,10 @@ export default function Register() {
     setLoading(true);
     try {
       await api.auth.verifyOtp({ email, otpCode });
-      navigate("/", { replace: true });
+      // Load the new session into auth context before leaving this screen,
+      // otherwise ProtectedRoute still sees a signed-out user and bounces to /login.
+      await checkUserAuth();
+      navigate(nextPath, { replace: true });
     } catch (err) {
       setError(err.message || "Invalid verification code");
     } finally {
@@ -71,7 +80,7 @@ export default function Register() {
   };
 
   const handleGoogle = () => {
-    api.auth.loginWithProvider("google", "/");
+    api.auth.loginWithProvider("google", nextPath);
   };
 
   if (showOtp) {
