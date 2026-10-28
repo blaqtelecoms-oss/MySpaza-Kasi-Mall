@@ -14,6 +14,49 @@ export function supabaseRestConfigured() {
   return Boolean(baseUrl && serviceRoleKey);
 }
 
+function serviceHeaders(extra = {}) {
+  return {
+    apikey: serviceRoleKey,
+    Authorization: `Bearer ${serviceRoleKey}`,
+    "Content-Type": "application/json",
+    ...extra,
+  };
+}
+
+/** Read rows with a PostgREST query string, e.g. `select=id&shop_id=eq.x`. */
+export async function selectRows(table, query = "") {
+  if (!supabaseRestConfigured()) {
+    throw new Error("Supabase is not configured on the email service");
+  }
+  const response = await fetch(`${baseUrl}/rest/v1/${table}?${query}`, {
+    headers: serviceHeaders(),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Supabase read from ${table} failed (${response.status}): ${detail.slice(0, 300)}`
+    );
+  }
+  return response.json();
+}
+
+/** Delete rows matching a PostgREST query string. */
+export async function deleteRows(table, query) {
+  if (!supabaseRestConfigured()) {
+    throw new Error("Supabase is not configured on the email service");
+  }
+  const response = await fetch(`${baseUrl}/rest/v1/${table}?${query}`, {
+    method: "DELETE",
+    headers: serviceHeaders({ Prefer: "return=minimal" }),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Supabase delete from ${table} failed (${response.status}): ${detail.slice(0, 300)}`
+    );
+  }
+}
+
 /**
  * Insert one row. `onConflict` names the unique column; with duplicate
  * resolution enabled a retried webhook is accepted without a second row.

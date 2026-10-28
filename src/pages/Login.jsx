@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
+import { useNextPath } from "@/lib/redirect";
 
 const fieldClass =
   "h-11 rounded-lg border-slate-300 bg-white pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:border-teal-600 focus-visible:ring-teal-600/20";
@@ -17,6 +18,8 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  // Invitation links send people here with ?next=/invite/<token>.
+  const nextPath = useNextPath();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,7 +27,7 @@ export default function Login() {
     setLoading(true);
     try {
       await api.auth.loginViaEmailPassword(email, password);
-      navigate("/", { replace: true });
+      navigate(nextPath, { replace: true });
     } catch (err) {
       setError(err.message || "Invalid email or password");
     } finally {
@@ -33,7 +36,7 @@ export default function Login() {
   };
 
   const handleGoogle = () => {
-    api.auth.loginWithProvider("google", "/");
+    api.auth.loginWithProvider("google", nextPath);
   };
 
   return (

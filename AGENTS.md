@@ -72,6 +72,41 @@ re-run it after a schema change.
   `src/lib/shopSettings.js`), so the printed receipt can load it.
 - Imported rows carry the old 24-character user id; the migration maps them to
   the account's auth id through `profiles.base44_id` so owners keep their data.
+
+## Employees (invitations + module permissions)
+
+`supabase/migrations/20261028_shop_employees.sql` adds the team model.
+
+- A **shop is the owner's account**: `shop_member.shop_id` is the owner's auth
+  uid, which is also the `created_by_id` on every row. `client.js` stamps
+  `created_by_id` with the *shop* the signed-in user works in (`currentShopId`,
+  cached per user), so an employee's writes belong to the shop, not to them.
+- `shop_member.permissions` maps a module key to `"view"` or `"edit"`; the keys
+  live in `src/lib/modules.js` and must match `server/lib/modules.js`. One shop
+  per employee (`shop_member.member_id` is unique).
+- Enforcement is in Postgres: every app table's policy is now
+  `created_by_id = auth.uid() or public.shop_module_level(created_by_id, <modules>)`
+  for reads, and `... = 'edit'` for writes. The nav (`Layout.jsx`), the route
+  guards (`RequireAccess.jsx`) and the permission editor only mirror that — if a
+  screen is gated wrong, the database still refuses the data.
+- `Employees` (`/employees`) and `Settings` (`/settings`) are owner-only routes;
+  `shop_member` writes are owner-only by policy.
+- Invitations: the owner's browser POSTs `/api/invitations` (same origin, proxied
+  to the `api` service by `vite.config.js`). `server/lib/shop-invite.js` verifies
+  the Supabase access token, takes the shop from **the caller**, stores only a
+  SHA-256 token hash in `shop_invite` (7-day expiry, one open invite per email)
+  and emails the link with Resend. `APP_URL` sets the link base.
+- Acceptance: `/invite/<token>` reads `shop_invite_preview()` (safe signed out)
+  and calls `accept_shop_invite()`, which requires the signed-in address to match
+  the invited one and refuses a second shop. Sign-in/registration honour
+  `?next=/invite/<token>` (`src/lib/redirect.js`).
+- An employee whose membership disappears has this device's cache wiped
+  (`AuthContext.refreshShop` → `clearUserData`), so revoked access does not
+  leave the shop's records in an offline cache.
+- Verify without a second person: create a throwaway auth user with the service
+  role, sign in through `/auth/v1/token?grant_type=password`, then call the RPCs
+  and the REST tables with that JWT. `RESEND_API_KEY=re_invalid…` on a second
+  server instance proves the invite send path without delivering mail.
 - Device caches (`src/lib/userDataReset.js`) are wiped whenever the signed-in
   identity changes, so an offline cache or queued write can never leak between
   accounts on a shared browser.

@@ -7,6 +7,9 @@
 //                                        through Resend.
 //   POST /api/webhooks/resend            Resend delivery events, stored in
 //                                        public.email_event for the operator log.
+//   POST /api/invitations                Owner creates an employee invitation
+//                                        (verified Supabase session); the link is
+//                                        emailed through Resend.
 //
 // Both POST routes verify the Standard Webhooks signature over the raw body, so
 // they are safe to expose. No dependencies: node:http plus global fetch.
@@ -15,6 +18,7 @@
 import http from "node:http";
 import { handleAuthEmailHook } from "./lib/auth-email-hook.js";
 import { handleResendWebhook } from "./lib/resend-webhook.js";
+import { handleCreateShopInvite } from "./lib/shop-invite.js";
 import { resendConfigured, senderAddress } from "./lib/resend.js";
 import { supabaseRestConfigured } from "./lib/supabase-rest.js";
 
@@ -51,6 +55,7 @@ function json(res, status, body) {
 const routes = {
   "/api/hooks/supabase/send-email": handleAuthEmailHook,
   "/api/webhooks/resend": handleResendWebhook,
+  "/api/invitations": handleCreateShopInvite,
 };
 
 const server = http.createServer(async (req, res) => {

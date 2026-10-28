@@ -25,6 +25,9 @@ services:
       - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
       - BASE44_PUBLIC_HOST_SUFFIX
       - BASE44_SANDBOX_HOST_DOMAIN
+      # Employee invitations: the dev server proxies /api to the email service,
+      # so the browser calls its own origin (as it does in production).
+      - EMAIL_API_TARGET=http://api:8080
     env_file:
       # Platform-managed secrets (Supabase URL + publishable key). Never in git,
       # and listed last so dashboard values always win.
@@ -74,6 +77,9 @@ services:
       # Sender for every auth email; the domain must be verified in Resend.
       - RESEND_FROM_EMAIL=noreply@myspaza-app.co.za
       - RESEND_FROM_NAME=My Spaza
+      # Base URL used in employee invitation links. In the sandbox that is the
+      # preview origin; a deployment sets it to the real domain.
+      - APP_URL=https://3000-${BASE44_PUBLIC_HOST_SUFFIX}
     env_file:
       # RESEND_API_KEY, RESEND_WEBHOOK_SECRET and
       # SUPABASE_SEND_EMAIL_HOOK_SECRET, plus VITE_SUPABASE_URL and

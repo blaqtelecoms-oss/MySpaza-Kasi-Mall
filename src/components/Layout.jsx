@@ -13,33 +13,42 @@ import { useAuth } from "@/lib/AuthContext";
 import { queryClientInstance } from "@/lib/query-client";
 import OfflineBanner from "@/components/OfflineBanner";
 
+// `module` is an employee permission key (see src/lib/modules.js): a shop owner
+// sees everything, an employee only the modules the owner granted. `ownerOnly`
+// screens manage the shop itself and are never shown to employees.
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-  { icon: ShoppingCart, label: "Point of Sale", path: "/pos" },
-  { icon: Package, label: "Inventory", path: "/inventory" },
-  { icon: Banknote, label: "Cash Up", path: "/cashup" },
-  { icon: Receipt, label: "Daily Sales", path: "/daily-sales" },
-  { icon: Building2, label: "Banking", path: "/banking" },
-  { icon: TrendingUp, label: "Accounting", path: "/accounting" },
-  { icon: DollarSign, label: "Expenses", path: "/expenses" },
-  { icon: Truck, label: "Suppliers", path: "/suppliers" },
-  { icon: Users, label: "Customers", path: "/customers" },
-  { icon: TrendingDown, label: "Debtors Control", path: "/debtors" },
-  { icon: UserCheck, label: "Employees", path: "/employees" },
-  { icon: BarChart2, label: "Reports", path: "/reports" },
-  { icon: GraduationCap, label: "Academy", path: "/academy" },
-  { icon: Calculator, label: "Calculators", path: "/calculators" },
-  { icon: Bot, label: "Spaza Coach", path: "/coach" },
-  { icon: CreditCard, label: "Funding Hub", path: "/funding" },
-  { icon: Wallet, label: "MySpaza Card", path: "/myspaza-card" },
-  { icon: Settings, label: "Settings", path: "/settings" },
+  { icon: ShoppingCart, label: "Point of Sale", path: "/pos", module: "pos" },
+  { icon: Package, label: "Inventory", path: "/inventory", module: "inventory" },
+  { icon: Banknote, label: "Cash Up", path: "/cashup", module: "cashup" },
+  { icon: Receipt, label: "Daily Sales", path: "/daily-sales", module: "daily_sales" },
+  { icon: Building2, label: "Banking", path: "/banking", module: "banking" },
+  { icon: TrendingUp, label: "Accounting", path: "/accounting", module: "accounting" },
+  { icon: DollarSign, label: "Expenses", path: "/expenses", module: "expenses" },
+  { icon: Truck, label: "Suppliers", path: "/suppliers", module: "suppliers" },
+  { icon: Users, label: "Customers", path: "/customers", module: "customers" },
+  { icon: TrendingDown, label: "Debtors Control", path: "/debtors", module: "debtors" },
+  { icon: UserCheck, label: "Employees", path: "/employees", ownerOnly: true },
+  { icon: BarChart2, label: "Reports", path: "/reports", module: "reports" },
+  { icon: GraduationCap, label: "Academy", path: "/academy", module: "academy" },
+  { icon: Calculator, label: "Calculators", path: "/calculators", module: "calculators" },
+  { icon: Bot, label: "Spaza Coach", path: "/coach", module: "coach" },
+  { icon: CreditCard, label: "Funding Hub", path: "/funding", module: "funding" },
+  { icon: Wallet, label: "MySpaza Card", path: "/myspaza-card", module: "myspaza_card" },
+  { icon: Settings, label: "Settings", path: "/settings", ownerOnly: true },
   // Operator-only: the Resend delivery log for signup and account emails.
   { icon: MailSearch, label: "Email Log", path: "/admin/email-events", adminOnly: true },
 ];
 
 export default function Layout() {
-  const { user, logout } = useAuth();
-  const visibleNavItems = navItems.filter((item) => !item.adminOnly || user?.role === "admin");
+  const { user, logout, shop, can } = useAuth();
+  // Owners see every screen; an employee only the modules granted to them.
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.adminOnly && user?.role !== "admin") return false;
+    if (item.ownerOnly && !shop?.isOwner) return false;
+    if (item.module && !can(item.module)) return false;
+    return true;
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [btnRefreshing, setBtnRefreshing] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -109,10 +118,18 @@ export default function Layout() {
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <div className="flex items-center gap-2">
             <img src="/brand/logo.png" alt="My Spaza" className="w-10 h-10 rounded-xl object-cover" />
-            <div>
+            <div className="min-w-0">
               <h1 className="text-white font-bold text-lg leading-none tracking-tight">My Spaza</h1>
-              <p className="text-white/50 text-xs">Business Manager</p>
-              <p className="text-[#FFD426] text-[10px] font-semibold mt-0.5 tracking-wide uppercase">Your neighbourhood. Your store.</p>
+              <p className="text-white/50 text-xs truncate max-w-[9.5rem]">
+                {shop?.shopName || "Business Manager"}
+              </p>
+              {shop && !shop.isOwner ? (
+                <p className="text-[#FFD426] text-[10px] font-semibold mt-0.5 tracking-wide uppercase truncate max-w-[9.5rem]">
+                  {shop.role} · employee
+                </p>
+              ) : (
+                <p className="text-[#FFD426] text-[10px] font-semibold mt-0.5 tracking-wide uppercase">Your neighbourhood. Your store.</p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -222,6 +239,11 @@ export default function Layout() {
                     {user?.email && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                     )}
+                    {shop && (
+                      <p className="text-[11px] text-teal-700 dark:text-teal-400 mt-1 truncate">
+                        {shop.role} · {shop.shopName || "My shop"}
+                      </p>
+                    )}
                   </div>
                   <Link
                     to="/settings"
@@ -292,10 +314,10 @@ export default function Layout() {
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-stretch h-16" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {[
           { icon: LayoutDashboard, label: "Home", path: "/" },
-          { icon: ShoppingCart, label: "POS", path: "/pos" },
-          { icon: Package, label: "Stock", path: "/inventory" },
-          { icon: Wallet, label: "Card", path: "/myspaza-card" },
-        ].map(t => {
+          { icon: ShoppingCart, label: "POS", path: "/pos", module: "pos" },
+          { icon: Package, label: "Stock", path: "/inventory", module: "inventory" },
+          { icon: Wallet, label: "Card", path: "/myspaza-card", module: "myspaza_card" },
+        ].filter(t => !t.module || can(t.module)).map(t => {
           const Icon = t.icon;
           const active = location.pathname === t.path;
           return (

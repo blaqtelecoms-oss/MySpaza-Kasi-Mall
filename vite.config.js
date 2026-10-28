@@ -26,5 +26,14 @@ export default defineConfig({
             : ['localhost'],
         }
       : {}),
+    // Employee invitations are sent by the email service (server/). Proxying
+    // `/api` keeps the browser on a single origin in development, which is how
+    // the app is served in production too (same paths, same domain).
+    proxy: {
+      '/api': {
+        target: process.env.EMAIL_API_TARGET || 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
   },
 });
