@@ -62,6 +62,14 @@ re-run it after a schema change.
   caller is already an admin, so nobody can promote themselves.
 - `email_event` and `media_assets` are operator-only (`is_admin()`). The
   `inventory-media` bucket stays public, so product photos keep working.
+- Storage uploads are filed under a folder named after the owner's auth id
+  (`client.js` → `UploadPublicFile`), because the write policies scope inserts
+  to `(storage.foldername(name))[1] = auth.uid()::text`.
+- `public.shop_settings` (migration `20261028_shop_logo_and_settings.sql`) keeps
+  one row per account (`unique created_by_id`) holding `business` and `receipt`
+  jsonb blobs plus `logo_url`; the Settings screen and the POS receipt read the
+  same row. The shop logo goes to the public `shop-logos` bucket (see
+  `src/lib/shopSettings.js`), so the printed receipt can load it.
 - Imported rows carry the old 24-character user id; the migration maps them to
   the account's auth id through `profiles.base44_id` so owners keep their data.
 - Device caches (`src/lib/userDataReset.js`) are wiped whenever the signed-in

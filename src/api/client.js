@@ -20,6 +20,7 @@ const TABLES = {
   PurchaseOrder: "purchase_order",
   Sale: "sale",
   SavingsGroup: "savings_group",
+  ShopSettings: "shop_settings",
   StockAdjustment: "stock_adjustment",
   StockfellAccount: "stockfell_account",
   Supplier: "supplier",
@@ -415,14 +416,22 @@ async function invokeCoachFunction(prompt) {
 
 const integrations = {
   Core: {
-    async UploadPublicFile({ file }) {
+    /**
+     * Upload a file to a public bucket and return its public URL.
+     * `bucket` defaults to the product-media bucket; the shop logo passes
+     * "shop-logos". Objects are stored under the signed-in user's folder,
+     * which is what the storage policies scope writes to.
+     */
+    async UploadPublicFile({ file, bucket = MEDIA_BUCKET }) {
       const extension = (file.name?.split(".").pop() || "bin").toLowerCase();
-      const path = `${newId()}.${extension}`;
+      const userId = await currentUserId();
+      if (!userId) throw new Error("You must be signed in to upload files.");
+      const path = `${userId}/${newId()}.${extension}`;
       const { error } = await supabase.storage
-        .from(MEDIA_BUCKET)
+        .from(bucket)
         .upload(path, file, { contentType: file.type, upsert: false });
       if (error) throw new Error(error.message);
-      const { data } = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(path);
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
       return { file_url: data.publicUrl };
     },
 

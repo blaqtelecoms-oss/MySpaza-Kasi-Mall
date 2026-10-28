@@ -143,8 +143,12 @@ npm run build
   Every table has RLS enabled with an owner policy
   (`created_by_id = auth.uid()`), so each account only sees and edits its own
   shop's rows. See [Data ownership](#data-ownership).
-- **Storage** — product photos go to the public `inventory-media` bucket; the
-  write policy lives in `supabase/migrations/`.
+- **Storage** — product photos go to the public `inventory-media` bucket and the
+  shop logo to the public `shop-logos` bucket; the write policies (scoped to the
+  owner's user-id folder) live in `supabase/migrations/`.
+- **Shop settings** — `public.shop_settings` holds one row per account (business
+  details, receipt options, `logo_url`). The Settings screen saves it and the POS
+  receipt prints from it (`src/lib/receipt.js`).
 - **AI coach** — `Spaza Coach` calls a Supabase Edge Function named `coach`
   (`POST /functions/v1/coach` with `{ prompt }`, returns `{ text }`). Deploy
   that function with your own model provider key to enable live answers; without

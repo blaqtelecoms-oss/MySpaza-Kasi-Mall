@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { api } from "@/api/client";
-import { Settings, Bell, Shield, Globe, Palette, Building2, Printer, Save, Trash2 } from "lucide-react";
+import { DEFAULT_SHOP_SETTINGS, SHOP_LOGO_BUCKET, toShopSettings } from "@/lib/shopSettings";
+import { Settings, Bell, Shield, Globe, Palette, Building2, Printer, Save, Trash2, Loader2, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,13 +32,8 @@ const SA_LANGUAGES = [
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
-  const [business, setBusiness] = useState({
-    name: "My Spaza Shop", owner: "", phone: "", email: "", address: "",
-    vatNumber: "", registrationNumber: "", currency: "ZAR"
-  });
-  const [receiptSettings, setReceiptSettings] = useState({
-    showLogo: true, showVAT: false, footer: "Thank you for shopping with us!", paperSize: "80mm"
-  });
+  const [business, setBusiness] = useState(DEFAULT_SHOP_SETTINGS.business);
+  const [receiptSettings, setReceiptSettings] = useState(DEFAULT_SHOP_SETTINGS.receipt);
   const [notifications, setNotifications] = useState({
     lowStock: true, cashupReminder: true, bankDeposit: true, expiryAlert: true, businessTips: true
   });
@@ -45,12 +41,73 @@ export default function SettingsPage() {
   const [language, setLanguage] = useState("en");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [settingsId, setSettingsId] = useState(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInput = useRef(null);
   const { toast } = useToast();
 
-  const handleSave = () => {
-    toast({ title: "Settings Saved", description: "Your settings have been saved successfully" });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  // Load the shop's saved profile (one row per account, owned by the user).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await api.entities.ShopSettings.filter({});
+        const row = rows?.[0];
+        if (cancelled || !row) return;
+        const loaded = toShopSettings(row);
+        setSettingsId(row.id);
+        setBusiness(loaded.business);
+        setReceiptSettings(loaded.receipt);
+        setLogoUrl(loaded.logoUrl);
+      } catch {
+        /* a missing row or an offline start just keeps the defaults */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const persistSettings = async (overrides = {}) => {
+    const payload = {
+      business: overrides.business ?? business,
+      receipt: overrides.receipt ?? receiptSettings,
+      logo_url: overrides.logoUrl ?? logoUrl,
+    };
+    if (settingsId) return api.entities.ShopSettings.update(settingsId, payload);
+    const created = await api.entities.ShopSettings.create(payload);
+    setSettingsId(created.id);
+    return created;
+  };
+
+  const handleSave = async () => {
+    try {
+      await persistSettings();
+      toast({ title: "Settings Saved", description: "Your settings have been saved successfully" });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      toast({ title: "Could not save settings", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleLogoFile = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please choose an image", variant: "destructive" });
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const res = await api.integrations.Core.UploadPublicFile({ file, bucket: SHOP_LOGO_BUCKET });
+      setLogoUrl(res.file_url);
+      await persistSettings({ logoUrl: res.file_url });
+      toast({ title: "Logo uploaded", description: "It now appears on your receipts" });
+    } catch (err) {
+      toast({ title: "Upload failed", description: err.message || "Could not upload the logo.", variant: "destructive" });
+    } finally {
+      setUploadingLogo(false);
+      if (logoInput.current) logoInput.current.value = "";
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -85,13 +142,40 @@ export default function SettingsPage() {
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><Building2 size={18} /> Business Information</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-20 h-20 bg-foreground rounded-2xl flex items-center justify-center cursor-pointer hover:bg-foreground/90 transition-colors">
-                  <Building2 size={32} className="text-background" />
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => logoInput.current?.click()}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") logoInput.current?.click(); }}
+                  className="w-20 h-20 bg-foreground rounded-2xl flex items-center justify-center overflow-hidden cursor-pointer hover:bg-foreground/90 transition-colors"
+                >
+                  {uploadingLogo ? (
+                    <Loader2 size={28} className="animate-spin text-background" />
+                  ) : logoUrl ? (
+                    <img src={logoUrl} alt="Shop logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <Building2 size={32} className="text-background" />
+                  )}
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Shop Logo</p>
                   <p className="text-xs text-muted-foreground">Tap to change logo</p>
-                  <Button variant="outline" size="sm" className="mt-1">Upload Logo</Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-1 gap-2"
+                    disabled={uploadingLogo}
+                    onClick={() => logoInput.current?.click()}
+                  >
+                    <Upload size={14} /> {logoUrl ? "Change Logo" : "Upload Logo"}
+                  </Button>
+                  <input
+                    ref={logoInput}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleLogoFile(e.target.files?.[0])}
+                  />
                 </div>
               </div>
               {[
