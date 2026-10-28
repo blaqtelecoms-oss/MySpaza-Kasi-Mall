@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { api } from "@/api/client";
+import { supabase } from "@/api/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,13 +9,34 @@ import { Lock, Loader2, AlertTriangle } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
-  const resetToken = searchParams.get("token");
+  const [linkState, setLinkState] = useState("checking");
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Supabase turns the recovery link into a short-lived session, so a valid
+  // session on this page is what authorises the password change.
+  useEffect(() => {
+    let active = true;
+
+    api.auth.getSession().then((session) => {
+      if (active) setLinkState(session ? "ready" : "invalid");
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+      if (event === "PASSWORD_RECOVERY" || (session && event === "SIGNED_IN")) {
+        setLinkState("ready");
+      }
+    });
+
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,7 +47,8 @@ export default function ResetPassword() {
     }
     setLoading(true);
     try {
-      await base44.auth.resetPassword({ resetToken, newPassword });
+      await api.auth.resetPassword({ newPassword });
+      await api.auth.logout(false);
       window.location.href = "/login";
     } catch (err) {
       setError(err.message || "Failed to reset password");
@@ -34,7 +57,17 @@ export default function ResetPassword() {
     }
   };
 
-  if (!resetToken) {
+  if (linkState === "checking") {
+    return (
+      <AuthLayout icon={Lock} title="New password" subtitle="Checking your reset link">
+        <div className="flex justify-center py-6">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      </AuthLayout>
+    );
+  }
+
+  if (linkState === "invalid") {
     return (
       <AuthLayout
         icon={AlertTriangle}

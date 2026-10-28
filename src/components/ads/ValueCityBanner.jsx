@@ -7,7 +7,7 @@ export default function ValueCityBanner() {
       <div className="absolute -right-4 -bottom-8 w-20 h-20 bg-white/10 rounded-full" />
       <div className="relative">
         <div className="flex items-center gap-2 mb-1.5">
-          <img src="https://media.base44.com/images/public/6a4415977639497c1bfe27ef/b6ee3c64f_images-removebg-preview1.png" alt="Value City" className="w-14 h-14 rounded-lg object-contain bg-white/95 p-0.5 flex-shrink-0" />
+          <img src="/brand/value-city.png" alt="Value City" className="w-14 h-14 rounded-lg object-contain bg-white/95 p-0.5 flex-shrink-0" />
           <div>
             <span className="text-[10px] uppercase tracking-wide font-semibold opacity-80 block">Sponsored</span>
             <h3 className="font-bold text-sm leading-tight">Value City — Wholesaler</h3>

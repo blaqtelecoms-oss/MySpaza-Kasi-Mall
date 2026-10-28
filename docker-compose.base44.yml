@@ -1,9 +1,9 @@
-# Base44 sandbox runtime for SpazaFlow.
+# Local sandbox runtime for My Spaza.
 #
-# `base44 dev` runs the whole stack on this machine: the Base44 dev backend
-# (entities in memory, local email/password auth) on :4400 and, because
-# base44/config.jsonc sets site.serveCommand, the Vite frontend on :5173.
-# Only the frontend is published, as host port 3000.
+# One service: the Vite dev server (live reload) talking to the app's Supabase
+# project. Supabase credentials arrive from the platform-managed env file;
+# nothing about the app is baked into an image, so every edit is picked up
+# without a rebuild.
 services:
   app:
     image: node:22
@@ -13,29 +13,21 @@ services:
       - sh
       - -ec
       - |
-        # `base44 dev` only accepts a linked project, and base44/.app.jsonc is
-        # gitignored, so recreate it from the app id on every checkout.
-        [ -f base44/.app.jsonc ] || printf '{"id":"%s"}\n' "$$BASE44_PROJECT_APP_ID" > base44/.app.jsonc
         npm install --no-audit --no-fund
-        exec npx --yes base44@0.2.3 dev -p 4400
+        exec npm run dev
     environment:
-      - HOME=/root
-      - BASE44_DISABLE_TELEMETRY=1
-      # Base44 app this repository belongs to (used only for the local project link).
-      - BASE44_PROJECT_APP_ID=${BASE44_PROJECT_APP_ID:-6a4415977639497c1bfe27ef}
-      # Bare pass-through: platform sets these; the Vite config only binds a
+      # Bare pass-through: the platform sets these; the Vite config only binds a
       # public interface and trusts the preview host when BASE44_PREVIEW_MODE=1.
       - BASE44_PREVIEW_MODE
       - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
       - BASE44_PUBLIC_HOST_SUFFIX
       - BASE44_SANDBOX_HOST_DOMAIN
-      # Where the Vite dev server proxies /migration-api (see vite.config.js).
-      - MIGRATION_API_URL=http://migration:8000
+    env_file:
+      # Platform-managed secrets (Supabase URL + publishable key). Never in git,
+      # and listed last so dashboard values always win.
+      - /run/base44/app.env
     volumes:
       - .:/app
-      # Placeholder local-dev CLI session, read-only: the dev backend seeds its
-      # single local user from this file and would otherwise delete it on boot.
-      - ./docker/base44-cli:/root/.base44/auth:ro
     ports:
       - "3000:5173"
     labels:
@@ -43,15 +35,14 @@ services:
       base44.kind: web
       base44.port: "3000"
     healthcheck:
-      # Backend (:4400) and frontend (:5173) must both answer.
       test:
         - CMD
         - node
         - -e
         - |
           const checks = {
-            backend: 'http://127.0.0.1:4400/api/apps/public/prod/public-settings/by-id/' + (process.env.BASE44_PROJECT_APP_ID || ''),
-            frontend: 'http://127.0.0.1:5173/'
+            page: 'http://127.0.0.1:5173/',
+            module: 'http://127.0.0.1:5173/src/main.jsx',
           };
           Promise.all(Object.entries(checks).map(([name, url]) =>
             fetch(url).then((r) => r.status < 500).catch(() => false).then((ok) => [name, ok])
@@ -64,54 +55,4 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 180s
-
-  # Base44 -> Supabase migration API (admin-only, see src/pages/Migration.jsx).
-  # Runs straight from ./server with no dependencies; the browser reaches it
-  # through the Vite dev server proxy on the single preview origin.
-  migration:
-    image: node:22
-    restart: on-failure
-    working_dir: /app
-    command: ["sh", "-ec", "exec node --watch server/index.js"]
-    environment:
-      - MIGRATION_PORT=8000
-      - BASE44_ENTITIES_DIR=/app/base44/entities
-      # Source of truth for app data/users/media (the live Base44 app).
-      - BASE44_SOURCE_API_URL=https://base44.app
-      # Session tokens come from the local dev backend in the sandbox. It binds
-      # loopback only, so verification goes back through the app's own preview
-      # origin (the Vite server), which proxies /api to it.
-      - BASE44_AUTH_API_URL=https://3000-${BASE44_PUBLIC_HOST_SUFFIX}
-      - MIGRATION_RUNS_DIR=/data/runs
-    env_file:
-      # Platform-managed secrets (Base44 admin token, Supabase keys). Never in git.
-      - /run/base44/app.env
-    volumes:
-      - .:/app
-      - migration-runs:/data/runs
-    ports:
-      - "8000:8000"
-    depends_on:
-      app:
-        condition: service_healthy
-    labels:
-      base44.project: Migration API
-      base44.kind: api
-      base44.port: "8000"
-    healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - |
-          fetch('http://127.0.0.1:8000/health')
-            .then((r) => process.exit(r.ok ? 0 : 1))
-            .catch(() => process.exit(1));
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-volumes:
-  migration-runs:
+      start_period: 120s

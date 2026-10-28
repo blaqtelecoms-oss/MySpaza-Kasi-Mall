@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
 import { Plus, Building2, RefreshCw, ArrowDownLeft, ArrowUpRight, Trash2, Edit } from "lucide-react";
@@ -41,10 +41,10 @@ export default function Banking() {
     try {
       const data = { ...form, current_balance: parseFloat(form.current_balance) || 0 };
       if (editItem) {
-        await base44.entities.BankAccount.update(editItem.id, data);
+        await api.entities.BankAccount.update(editItem.id, data);
         toast({ title: "Account Updated" });
       } else {
-        await base44.entities.BankAccount.create(data);
+        await api.entities.BankAccount.create(data);
         toast({ title: "Account Added" });
       }
       setModalOpen(false);
@@ -57,7 +57,7 @@ export default function Banking() {
     if (!depositAmount || !depositAccount) { toast({ title: "Please fill all fields", variant: "destructive" }); return; }
     const account = accounts.find(a => a.id === depositAccount);
     if (!account) return;
-    await base44.entities.BankAccount.update(depositAccount, {
+    await api.entities.BankAccount.update(depositAccount, {
       current_balance: (account.current_balance || 0) + parseFloat(depositAmount)
     });
     toast({ title: "Deposit Recorded", description: `${formatCurrency(parseFloat(depositAmount))} deposited` });

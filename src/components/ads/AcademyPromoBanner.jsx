@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { GraduationCap, ArrowRight } from "lucide-react";
 
-const LOGO_URL = "https://media.base44.com/images/public/6a4415977639497c1bfe27ef/afdb5279a_My_Spaza-removebg-preview.png";
+const LOGO_URL = "/brand/logo.png";
 
 export default function AcademyPromoBanner() {
   return (

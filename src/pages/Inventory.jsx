@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
 import {
@@ -73,10 +73,10 @@ export default function Inventory() {
         max_stock_level: parseFloat(form.max_stock_level) || 0,
       };
       if (editProduct) {
-        await base44.entities.Product.update(editProduct.id, data);
+        await api.entities.Product.update(editProduct.id, data);
         toast({ title: "Product Updated", description: `${form.name} has been updated` });
       } else {
-        await base44.entities.Product.create(data);
+        await api.entities.Product.create(data);
         toast({ title: "Product Added", description: `${form.name} has been added` });
       }
       setModalOpen(false);
@@ -91,7 +91,7 @@ export default function Inventory() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    await base44.entities.Product.delete(deleteTarget.id);
+    await api.entities.Product.delete(deleteTarget.id);
     toast({ title: "Deleted", description: `${deleteTarget.name} removed` });
     setDeleteTarget(null);
     invalidateProduct("Product");

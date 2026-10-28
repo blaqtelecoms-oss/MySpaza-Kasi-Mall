@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import { Plus, Trash2, Pencil, Store, Tag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,7 @@ export default function DiscountsTab() {
                   </div>
                 </div>
                 <button onClick={async () => {
-                  await base44.entities.Wholesaler.delete(ws.id);
+                  await api.entities.Wholesaler.delete(ws.id);
                   load();
                 }}><Trash2 size={16} className="text-red-400 hover:text-red-600" /></button>
               </div>
@@ -91,7 +91,7 @@ export default function DiscountsTab() {
                         </div>
                         <div className="flex items-center gap-1">
                           <button onClick={() => setDiscModal({ edit: d })}><Pencil size={13} className="text-gray-400 hover:text-gray-600" /></button>
-                          <button onClick={async () => { await base44.entities.WholesalerDiscount.delete(d.id); load(); }}>
+                          <button onClick={async () => { await api.entities.WholesalerDiscount.delete(d.id); load(); }}>
                             <Trash2 size={13} className="text-red-400 hover:text-red-600" />
                           </button>
                         </div>
@@ -125,7 +125,7 @@ function WholesalerForm({ onClose, onSaved }) {
     if (!form.name) { toast({ title: "Name required", variant: "destructive" }); return; }
     setSaving(true);
     try {
-      await base44.entities.Wholesaler.create({ ...form, is_participating: true });
+      await api.entities.Wholesaler.create({ ...form, is_participating: true });
       toast({ title: "Wholesaler added", description: "Now add discount tiers." });
       onSaved();
     } catch (e) {
@@ -195,9 +195,9 @@ function DiscountForm({ mode, wholesalers, onClose, onSaved }) {
     setSaving(true);
     try {
       if (editing) {
-        await base44.entities.WholesalerDiscount.update(mode.edit.id, form);
+        await api.entities.WholesalerDiscount.update(mode.edit.id, form);
       } else {
-        await base44.entities.WholesalerDiscount.create(form);
+        await api.entities.WholesalerDiscount.create(form);
       }
       toast({ title: editing ? "Tier updated" : "Discount tier added" });
       onSaved();

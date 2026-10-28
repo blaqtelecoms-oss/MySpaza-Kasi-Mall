@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import { Plus, Boxes, Trash2, UserPlus, Check, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -88,7 +88,7 @@ export default function BulkBuyTab() {
                       <UserPlus size={14} /> Join
                     </Button>
                   )}
-                  <button onClick={async () => { await base44.entities.BulkBuy.delete(o.id); load(); }}>
+                  <button onClick={async () => { await api.entities.BulkBuy.delete(o.id); load(); }}>
                     <Trash2 size={15} className="text-red-400 hover:text-red-600" />
                   </button>
                 </div>
@@ -152,7 +152,7 @@ function BulkBuyForm({ wholesalers, onClose, onSaved }) {
       per_member_quantity: Math.round(per_member_quantity * 100) / 100, order_date: new Date().toISOString().split("T")[0],
     };
     try {
-      await base44.entities.BulkBuy.create(payload);
+      await api.entities.BulkBuy.create(payload);
       toast({ title: "Bulk buy created", description: "Other shop owners can now join." });
       onSaved();
     } catch (e) {
@@ -232,7 +232,7 @@ function JoinDialog({ order, onClose, onSaved }) {
     const members = [...(order.members || []), { name, quantity: parseFloat(quantity), amount, paid: false }];
     const memberCount = members.length;
     const totalCost = order.total_cost;
-    await base44.entities.BulkBuy.update(order.id, {
+    await api.entities.BulkBuy.update(order.id, {
       members, member_count: memberCount,
       per_member_cost: Math.round((totalCost / memberCount) * 100) / 100,
       per_member_quantity: Math.round((order.total_quantity / memberCount) * 100) / 100,

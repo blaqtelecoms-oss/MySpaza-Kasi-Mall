@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
 import { Plus, Phone, Mail, Edit, Trash2, Truck, RefreshCw, BookOpen } from "lucide-react";
@@ -39,10 +39,10 @@ export default function Suppliers() {
     try {
       const data = { ...form, credit_terms: parseInt(form.credit_terms) || 0, outstanding_balance: parseFloat(form.outstanding_balance) || 0 };
       if (editItem) {
-        await base44.entities.Supplier.update(editItem.id, data);
+        await api.entities.Supplier.update(editItem.id, data);
         toast({ title: "Supplier Updated" });
       } else {
-        await base44.entities.Supplier.create(data);
+        await api.entities.Supplier.create(data);
         toast({ title: "Supplier Added" });
       }
       setModalOpen(false);
@@ -57,7 +57,7 @@ export default function Suppliers() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    await base44.entities.Supplier.delete(deleteTarget.id);
+    await api.entities.Supplier.delete(deleteTarget.id);
     setDeleteTarget(null);
     invalidateSupplier("Supplier");
   };

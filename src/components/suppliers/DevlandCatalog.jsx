@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useToast } from "@/components/ui/use-toast";
 
 const CATALOG = [
@@ -255,7 +255,7 @@ export default function DevlandCatalog({ open, onClose }) {
     for (const { item, idx } of selectedItems) {
       const details = itemDetails[idx] || {};
       try {
-        await base44.entities.Product.create({
+        await api.entities.Product.create({
           name: item.name,
           category: item.category,
           cost_price: item.cost_price,

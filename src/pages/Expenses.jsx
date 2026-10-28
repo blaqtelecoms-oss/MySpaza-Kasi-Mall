@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
 import { Plus, Trash2, RefreshCw, Upload, Receipt, Fuel, Lightbulb, Droplet, Home, Bus, User, Sparkles, Lock, Wrench, Megaphone, Package, FileText } from "lucide-react";
@@ -57,7 +57,7 @@ export default function Expenses() {
     }
     setSaving(true);
     try {
-      await base44.entities.Expense.create({ ...form, amount: parseFloat(form.amount) });
+      await api.entities.Expense.create({ ...form, amount: parseFloat(form.amount) });
       toast({ title: "Expense Logged", description: `${form.category} — ${formatCurrency(parseFloat(form.amount))}` });
       setModalOpen(false);
       setForm(emptyForm);
@@ -72,7 +72,7 @@ export default function Expenses() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    await base44.entities.Expense.delete(deleteTarget.id);
+    await api.entities.Expense.delete(deleteTarget.id);
     setDeleteTarget(null);
     invalidateExpense("Expense");
   };

@@ -36,7 +36,6 @@ const SpazaCoach = lazy(() => import('@/pages/SpazaCoach'));
 const FundingHub = lazy(() => import('@/pages/FundingHub'));
 const MySpazaCard = lazy(() => import('@/pages/MySpazaCard'));
 const Settings = lazy(() => import('@/pages/Settings'));
-const Migration = lazy(() => import('@/pages/Migration'));
 
 const PageLoader = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -57,7 +56,7 @@ const AuthenticatedApp = () => {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-green-50">
         <div className="text-center">
-          <img src="https://media.base44.com/images/public/6a4415977639497c1bfe27ef/afdb5279a_My_Spaza-removebg-preview.png" alt="My Spaza" className="w-20 h-20 rounded-2xl object-cover mx-auto mb-2" />
+          <img src="/brand/logo.png" alt="My Spaza" className="w-20 h-20 rounded-2xl object-cover mx-auto mb-2" />
           <p className="text-sm font-semibold text-green-700 mb-4">My Spaza</p>
           <div className="w-8 h-8 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto"></div>
           <p className="text-green-700 mt-3 font-medium">Loading My Spaza...</p>
@@ -109,7 +108,6 @@ const AuthenticatedApp = () => {
             <Route path="/funding" element={<FundingHub />} />
             <Route path="/myspaza-card" element={<MySpazaCard />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/migration" element={<Migration />} />
           </Route>
         </Route>
         <Route path="*" element={<PageNotFound />} />

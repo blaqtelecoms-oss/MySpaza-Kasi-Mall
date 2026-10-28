@@ -1,8 +1,8 @@
-// Reusable cache-first entity query hook built on the offline-aware base44
+// Reusable cache-first entity query hook built on the offline-aware Supabase
 // client. Every page gets: instant render from persisted IndexedDB cache,
 // background refresh when online, and automatic invalidation on sync.
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 
 function stableArgs(args) {
   return JSON.stringify(args || []);
@@ -18,7 +18,7 @@ export function entityQueryKey(entity, method, args = []) {
 export function useEntityQuery(entity, method, args = [], options = {}) {
   return useQuery({
     queryKey: entityQueryKey(entity, method, args),
-    queryFn: () => base44.entities[entity][method](...args),
+    queryFn: () => api.entities[entity][method](...args),
     staleTime: 1000 * 60 * 2, // serve cached data for 2 min, then refetch in background
     gcTime: 1000 * 60 * 30,
     ...options,

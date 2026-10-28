@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity, entityQueryKey } from "@/hooks/useEntityQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
@@ -136,7 +136,7 @@ export default function POS() {
         // after a previous credit sale whose balance update hasn't refetched.
         let freshCustomer = selectedCustomer;
         try {
-          freshCustomer = await base44.entities.Customer.get(selectedCustomer.id);
+          freshCustomer = await api.entities.Customer.get(selectedCustomer.id);
         } catch (e) {
           /* fall back to cached customer if the fresh fetch fails (e.g. offline) */
         }
@@ -161,7 +161,7 @@ export default function POS() {
       //    When offline, the transparent offline layer queues the write to
       //    IndexedDB and returns a temporary record (id starts with "tmp_").
       //    The sync engine replays it against the server on reconnect.
-      const saleResult = await base44.entities.Sale.create({
+      const saleResult = await api.entities.Sale.create({
         sale_number: saleNumber,
         items: saleCart,
         subtotal,
@@ -198,7 +198,7 @@ export default function POS() {
       // 3. Persist stock changes (best effort, non-blocking)
       Promise.all(saleCart.map(item => {
         const product = products.find(p => p.id === item.product_id);
-        return base44.entities.Product.update(item.product_id, {
+        return api.entities.Product.update(item.product_id, {
           stock_quantity: Math.max(0, (product?.stock_quantity || 0) - item.quantity),
         });
       }))
@@ -210,7 +210,7 @@ export default function POS() {
         const ref = selectedCustomerRef || selectedCustomer;
         const newBalance = (ref?.outstanding_balance || 0) + total;
         try {
-          await base44.entities.Customer.update(selectedCustomer.id, {
+          await api.entities.Customer.update(selectedCustomer.id, {
             outstanding_balance: newBalance,
           });
           // Optimistically reflect the new balance in the cached customer list

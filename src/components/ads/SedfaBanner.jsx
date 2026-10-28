@@ -7,7 +7,7 @@ export default function SedfaBanner() {
       <div className="absolute -right-4 -bottom-8 w-20 h-20 bg-white/10 rounded-full" />
       <div className="relative">
         <div className="flex items-center gap-2 mb-1.5">
-          <img src="https://media.base44.com/images/public/6a4415977639497c1bfe27ef/6a81bb333_dac220_9458957b3ee94aee936557ae113c1372_mv2-removebg-preview.png" alt="SEDFA" className="w-12 h-12 rounded-lg object-contain flex-shrink-0" />
+          <img src="/brand/sedfa.png" alt="SEDFA" className="w-12 h-12 rounded-lg object-contain flex-shrink-0" />
           <div>
             <span className="text-[10px] uppercase tracking-wide font-semibold opacity-80 block">Sponsored</span>
             <h3 className="font-bold text-sm leading-tight">SEDFA — Finance Agency</h3>

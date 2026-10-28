@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
 import { Plus, Phone, Mail, Edit, Trash2, Users, Star, RefreshCw } from "lucide-react";
@@ -37,10 +37,10 @@ export default function Customers() {
     try {
       const data = { ...form, credit_limit: parseFloat(form.credit_limit) || 0, outstanding_balance: parseFloat(form.outstanding_balance) || 0 };
       if (editItem) {
-        await base44.entities.Customer.update(editItem.id, data);
+        await api.entities.Customer.update(editItem.id, data);
         toast({ title: "Customer Updated" });
       } else {
-        await base44.entities.Customer.create(data);
+        await api.entities.Customer.create(data);
         toast({ title: "Customer Added" });
       }
       setModalOpen(false);
@@ -53,7 +53,7 @@ export default function Customers() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    await base44.entities.Customer.delete(deleteTarget.id);
+    await api.entities.Customer.delete(deleteTarget.id);
     setDeleteTarget(null);
     invalidateCustomer("Customer");
   };

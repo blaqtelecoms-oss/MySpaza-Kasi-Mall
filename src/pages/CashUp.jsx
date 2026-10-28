@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
 import { Banknote, CheckCircle, Plus, RefreshCw, AlertCircle, TrendingUp, Landmark, History } from "lucide-react";
@@ -121,10 +121,10 @@ export default function CashUp() {
         status: "draft",
       };
       if (todayCashup) {
-        await base44.entities.CashUp.update(todayCashup.id, data);
+        await api.entities.CashUp.update(todayCashup.id, data);
         toast({ title: "Cash Up Updated" });
       } else {
-        await base44.entities.CashUp.create(data);
+        await api.entities.CashUp.create(data);
         toast({ title: "Cash Up Saved" });
       }
       invalidateSale("Sale");

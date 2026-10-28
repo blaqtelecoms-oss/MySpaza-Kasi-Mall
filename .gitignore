@@ -29,7 +29,3 @@ dist-ssr
 
 .env
 .vite
-base44/.app.jsonc
-
-# Migration run checkpoints (written by server/lib/runs.js)
-server/.runs

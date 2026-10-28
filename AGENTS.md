@@ -2,103 +2,63 @@
 
 ## Project Context
 
-This is a Base44 app repository. Treat it as user-owned application code, keep changes focused on the user's request, and preserve existing project conventions.
+My Spaza is a React + Vite single-page shop-management app. Data, media and
+user accounts live in **Supabase** (Postgres, Auth, Storage). Keep changes
+focused on the user's request and preserve existing project conventions.
 
-Start with `README.md` for local setup, environment variables, and publish workflow.
-
-## Base44 References
-
-- CLI overview: https://docs.base44.com/developers/references/cli/get-started/overview.md
-- Agent skills: https://docs.base44.com/developers/backend/overview/skills.md
-
-If your agent supports Agent Skills, install or update Base44 skills before Base44-specific work:
-
-```bash
-npx skills add base44/skills
-```
+See `README.md` for local setup, environment variables and the Supabase schema.
 
 ## Key Files
 
 - `src/`: frontend application source.
-- `src/api/base44Client.js`: frontend Base44 SDK client.
-- `vite.config.js`: Vite config and Base44 Vite plugin setup.
-- `.env.local`: local-only environment values; never commit secrets.
+- `src/api/supabase.js`: Supabase browser client (URL + anon/publishable key).
+- `src/api/client.js`: the app's data/auth API — entity methods (`list`,
+  `filter`, `get`, `create`, `update`, `delete`, bulk forms) map to snake_case
+  Postgres tables, plus `auth` (Supabase Auth) and
+  `integrations.Core.UploadPublicFile` (Supabase Storage, `inventory-media`).
+- `src/lib/AuthContext.jsx`: session/profile state for the whole app.
+- `src/lib/offlineLayer.js` + `offlineStorage/offlineQueue/syncEngine`: offline
+  cache and write queue wrapped around `client.entities`.
+- `supabase/migrations/`: SQL policies applied to the Supabase project.
+- `docker-compose.base44.yml`: sandbox runtime (file name is required by the
+  platform; the app itself has no Base44 dependency).
 
 ## Working Notes
 
-- Use `base44 dev` as the default local development command when you need the local Base44 backend. It can run the backend and frontend together.
-- When docs or code mention the frontend being started automatically, that usually means the Base44 project config includes `site.serveCommand`, for example `"serveCommand": "npm run dev"` in `base44/config.jsonc`.
-- Use `npm run dev` only for frontend-only work against the hosted Base44 backend.
-- Prefer the existing Base44 CLI workflow over adding new npm scripts for Base44-specific tasks.
-- Reuse the existing SDK client and Vite plugin patterns before adding new Base44 integration paths.
-- Run the relevant checks from `package.json` before finishing code changes.
+- Screens import the API as `import { api } from "@/api/client"`.
+- Entity method signatures mirror the previous data layer:
+  `list(sort, limit)`, `filter(criteria, sort, limit)`, `get(id)`,
+  `create(data)`, `update(id, data)`, `delete(id)`. A sort of `"-field"` is
+  newest-first; the default is `-created_date`. Sorting by a column a table does
+  not have falls back to `-created_date` instead of failing.
+- Row level security is the access control: every table allows `authenticated`
+  users only. Never weaken a policy to make a screen work.
+- `public.profiles` mirrors each auth user (`id`, `email`, `full_name`,
+  `role`). A missing profile is created on first sign-in.
+- Run `npm run lint` and `npm run build` before finishing a change.
 
 ## Sandbox runtime (`docker-compose.base44.yml`)
 
-`docker compose -f docker-compose.base44.yml up -d` runs the whole app on this machine with one service:
+`docker compose -f docker-compose.base44.yml up -d` runs one service:
 
-- `base44 dev -p 4400` starts the Base44 **dev backend** (entities in memory, local email/password auth)
-  and, because `base44/config.jsonc` sets `site.serveCommand`, the Vite frontend on `:5173`.
-  Host port `3000` maps to that frontend, so `/api` is proxied to the backend by the Base44 Vite plugin —
-  single origin, no CORS setup.
-- **Login in the sandbox:** the dev backend seeds one user, `dev@spazaflow.local`, and accepts any password.
-  Data is in memory only, so it is empty on every container start and is lost when the container is recreated.
-- **`docker/base44-cli/auth.json`** is a placeholder CLI session, not a credential: it has no valid signature
-  and grants nothing remotely. It only exists because `base44 dev` refuses to start without a CLI session file
-  and seeds its local user from it. It is mounted read-only because the CLI deletes the file when a forwarded
-  production call returns 401. Replace it with a real `base44 login` session to work against a real account
-  (that flow needs a writable `~/.base44/auth` mount instead).
-- `base44 dev` only accepts a linked project, and `base44/.app.jsonc` is gitignored, so the compose command
-  recreates it from `BASE44_PROJECT_APP_ID` on startup.
-- `/api/apps/public/prod/public-settings/...` and OAuth routes are not implemented locally and are forwarded to
-  production; the "not supported in local development, passing call to production" warnings in the logs are normal.
-- `BASE44_PREVIEW_MODE=1` makes `vite.config.js` bind the dev server to `0.0.0.0` so the preview proxy can reach
-  it. Unset, `npm run dev` keeps its default localhost binding.
+- Node 22 running `npm install && npm run dev` (Vite) from the bind-mounted
+  checkout, so edits hot-reload. Host port `3000` maps to Vite's `:5173`.
+- Supabase credentials come from the platform env file `/run/base44/app.env`
+  (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). They are never committed.
+- `BASE44_PREVIEW_MODE=1` makes `vite.config.js` bind the dev server to
+  `0.0.0.0` so the preview proxy can reach it. Unset, `npm run dev` keeps its
+  default localhost binding.
+- The app talks to Supabase directly from the browser, so there is no local
+  backend service and no `/api` proxy.
 
-Verification note: the preview harness restores the signed-out session on every fresh page load, so pages behind
-`ProtectedRoute` can only be checked by logging in inside the preview pane by hand.
+Verification note: the preview harness restores a signed-out session on every
+fresh page load, so pages behind `ProtectedRoute` can only be checked by signing
+in inside the preview pane (or by driving the login form in the same script that
+asserts the signed-in screen).
 
-## Base44 → Supabase migration (`server/`, `/migration`)
+## AI coach
 
-The `migration` compose service (`server/index.js`, no npm dependencies) copies this app's Base44 data into the
-Supabase project. The admin UI is `/migration` (`src/pages/Migration.jsx`, linked from the sidebar); it calls the
-service through the Vite proxy at `/migration-api`, so everything stays on one origin.
-
-- **Phases** (`server/lib/migration.js`): `preflight` (read-only inventory) → `schema` → `users` → `data` →
-  `media` → `reconcile`. Every phase is idempotent: tables/columns use `if not exists`, buckets are created only
-  when missing, rows are upserted with `resolution=ignore-duplicates` (or `merge-duplicates` when the admin picks
-  "overwrite"), and media objects that already have a `media_assets` row are skipped. A retry re-runs from the
-  earliest unfinished or problematic phase, so it never duplicates work.
-- **Run state** lives on disk in the `migration-runs` volume (`MIGRATION_RUNS_DIR=/data/runs`), which is what makes
-  a run resumable after a service restart. No bookkeeping tables are written during a dry run.
-- **Schema**: entity tables are generated from `base44/entities/*.jsonc` (snake_case names, e.g. `PurchaseOrder` →
-  `purchase_order`); the `User` entity becomes `auth.users` + `public.profiles` (keeping `base44_id`). Every table
-  has RLS enabled with an `authenticated` policy matching the app's single-shop sharing model.
-- **Supabase APIs**: DDL and RLS policies go through the Management API (`SUPABASE_ACCESS_TOKEN`); rows, storage and
-  auth users use the service role key. Base44 password hashes cannot be replayed, so accounts are recreated
-  confirmed but password-less — each user must reset their password.
-- **Bucket taxonomy** (`server/lib/buckets.js`) follows the app's real media fields: `inventory-media` (public,
-  `Product.image_url`), `wholesaler-logos` (public, `Wholesaler.logo_url`), `expense-receipts` (private,
-  `Expense.receipt_image`) and `app-uploads` (private fallback for any other media reference).
-- **Media detection** covers both Base44 hosts: `base44.app/api/apps/<app>/files/mp/...` and
-  `media.base44.com/images/...`.
-- **Sandbox auth**: the migration service verifies the caller's Base44 session with
-  `GET /api/apps/<app>/entities/User/me` and requires `role: "admin"`. In the sandbox `BASE44_AUTH_API_URL` points
-  at `https://3000-${BASE44_PUBLIC_HOST_SUFFIX}` because `base44 dev` binds its API to loopback inside its own
-  container; production uses the default `https://base44.app`.
-
-Verifying a migration without the browser:
-
-```bash
-TOKEN=$(curl -s -X POST http://localhost:3000/api/apps/<app-id>/auth/login \
-  -H 'Content-Type: application/json' -H 'X-App-Id: <app-id>' \
-  -d '{"email":"dev@spazaflow.local","password":"x"}' | jq -r .access_token)
-curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/migration-api/status
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{}' http://localhost:3000/migration-api/dry-run          # then GET /runs/<id>
-curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"mode":"apply","conflictMode":"skip"}' http://localhost:3000/migration-api/runs
-```
-
-`/migration` itself sits behind `ProtectedRoute`, so the preview harness (which always restores a signed-out
-session) cannot drive it — sign in in the preview pane and open `/migration` to exercise it by hand.
+`src/pages/SpazaCoach.jsx` calls `api.integrations.Core.InvokeLLM`, which posts to
+the Supabase Edge Function `coach`. No such function ships in this repository;
+until one is deployed with a model provider key the page shows its "try again
+later" message. Business context in the prompt comes from Supabase tables.

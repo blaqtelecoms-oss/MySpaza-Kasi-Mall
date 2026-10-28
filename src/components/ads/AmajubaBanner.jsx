@@ -6,7 +6,7 @@ export default function AmajubaBanner() {
       <div className="absolute -right-8 -top-4 w-28 h-28 bg-amber-500/20 rounded-full" />
       <div className="relative">
         <div className="flex items-center gap-2 mb-1.5">
-          <img src="https://media.base44.com/images/public/6a4415977639497c1bfe27ef/1270656bc_Screenshot_2026-07-01_154216-removebg-preview.png" alt="Amajuba Chamber" className="w-12 h-12 rounded-lg object-contain flex-shrink-0" />
+          <img src="/brand/amajuba.png" alt="Amajuba Chamber" className="w-12 h-12 rounded-lg object-contain flex-shrink-0" />
           <div>
             <span className="text-[10px] uppercase tracking-wide font-semibold opacity-80 block">Sponsored</span>
             <h3 className="font-bold text-sm leading-tight">Amajuba Economic Chamber</h3>

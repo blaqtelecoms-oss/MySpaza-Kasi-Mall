@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Download, Award, Loader2 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
-const LOGO_URL = "https://media.base44.com/images/public/6a4415977639497c1bfe27ef/afdb5279a_My_Spaza-removebg-preview.png";
+const LOGO_URL = "/brand/logo.png";
 
 export default function Certificate({ open, onClose, courseTitle, ownerName, completedDate }) {
   const certRef = useRef(null);

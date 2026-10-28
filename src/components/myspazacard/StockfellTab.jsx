@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import { PiggyBank, Plus, ArrowDownCircle, ArrowUpCircle, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,9 @@ export default function StockfellTab() {
 
   const save = async (data) => {
     if (account) {
-      await base44.entities.StockfellAccount.update(account.id, data);
+      await api.entities.StockfellAccount.update(account.id, data);
     } else {
-      const created = await base44.entities.StockfellAccount.create(data);
+      const created = await api.entities.StockfellAccount.create(data);
       setAccount(created);
     }
     invalidateStockfell("StockfellAccount");
@@ -108,7 +108,7 @@ export default function StockfellTab() {
             setAccount(prev => prev ? { ...prev, balance: prev.balance + amt, total_contributed: prev.total_contributed + amt, last_contribution_date: today } : prev);
             toast({ title: "Saved", description: fmt(amt) + " added" });
             setAction(null);
-            base44.entities.StockfellAccount.update(account.id, {
+            api.entities.StockfellAccount.update(account.id, {
               balance: account.balance + amt,
               total_contributed: account.total_contributed + amt,
               last_contribution_date: today,
@@ -123,7 +123,7 @@ export default function StockfellTab() {
             setAccount(prev => prev ? { ...prev, balance: prev.balance - amt, total_withdrawn: prev.total_withdrawn + amt } : prev);
             toast({ title: "Withdrawn", description: fmt(amt) + " out" });
             setAction(null);
-            base44.entities.StockfellAccount.update(account.id, {
+            api.entities.StockfellAccount.update(account.id, {
               balance: account.balance - amt,
               total_withdrawn: account.total_withdrawn + amt,
             }).then(() => invalidateStockfell("StockfellAccount")).catch(() => { toast({ title: "Sync failed", variant: "destructive" }); invalidateStockfell("StockfellAccount"); });

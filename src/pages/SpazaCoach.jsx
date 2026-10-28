@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { Send, Bot, RefreshCw, Lightbulb, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,9 +41,9 @@ export default function SpazaCoach() {
   const loadBusinessContext = async () => {
     try {
       const [sales, products, expenses] = await Promise.all([
-        base44.entities.Sale.filter({ sale_date: new Date().toISOString().split("T")[0] }).catch(() => []),
-        base44.entities.Product.list().catch(() => []),
-        base44.entities.Expense.list("-expense_date", 20).catch(() => []),
+        api.entities.Sale.filter({ sale_date: new Date().toISOString().split("T")[0] }).catch(() => []),
+        api.entities.Product.list().catch(() => []),
+        api.entities.Expense.list("-expense_date", 20).catch(() => []),
       ]);
       const todayRevenue = sales.filter(s => s.status === "completed").reduce((sum, s) => sum + (s.total_amount || 0), 0);
       const stockValue = products.reduce((sum, p) => sum + ((p.cost_price || 0) * (p.stock_quantity || 0)), 0);
@@ -64,7 +64,7 @@ export default function SpazaCoach() {
         ? `\nBusiness context: Today's revenue: R${businessContext.todayRevenue.toFixed(2)}, Stock value: R${businessContext.stockValue.toFixed(2)}, Products: ${businessContext.productCount}, Low stock items: ${businessContext.lowStock}.`
         : "";
 
-      const response = await base44.integrations.Core.InvokeLLM({
+      const response = await api.integrations.Core.InvokeLLM({
         prompt: `You are Spaza Coach, a friendly business advisor for South African spaza shop owners. 
 You speak in simple, clear English that is easy to understand. 
 Use practical South African examples and reference local brands, suppliers, and context where relevant.

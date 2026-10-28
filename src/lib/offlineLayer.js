@@ -1,7 +1,7 @@
-// Transparent offline layer: wraps base44.entities so every screen automatically
+// Transparent offline layer: wraps client.entities so every screen automatically
 // caches reads (per filter), falls back to cache when offline, and queues writes
 // to sync later — with conflict parking and reconnection auto-flush.
-// Installed once in src/api/base44Client.js — no per-screen changes required.
+// Installed once in src/api/client.js — no per-screen changes required.
 import {
   setCachedRead,
   getCachedRead,
@@ -284,12 +284,12 @@ function matchesLocal(record, filter) {
   return true;
 }
 
-export function installOfflineLayer(base44) {
-  if (installed || !base44 || !base44.entities) return;
-  const target = base44.entities;
+export function installOfflineLayer(client) {
+  if (installed || !client || !client.entities) return;
+  const target = client.entities;
 
   try {
-    base44.entities = new Proxy(target, {
+    client.entities = new Proxy(target, {
       get(t, prop) {
         const entity = t[prop];
         if (entity && typeof entity === "object") {
@@ -307,8 +307,8 @@ export function installOfflineLayer(base44) {
 
   // Verify the assignment actually took effect (silent no-op if the property
   // was non-writable in a non-strict context).
-  if (base44.entities === target) {
-    console.warn("[offline] Entity proxy did not apply — base44.entities is unchanged. App will run online-only.");
+  if (client.entities === target) {
+    console.warn("[offline] Entity proxy did not apply — client.entities is unchanged. App will run online-only.");
     return;
   }
 

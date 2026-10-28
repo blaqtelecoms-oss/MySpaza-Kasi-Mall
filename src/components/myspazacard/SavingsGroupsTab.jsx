@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import { Plus, Users, Trash2, Pencil, UserPlus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,7 @@ export default function SavingsGroupsTab() {
                     <button onClick={() => { setEdit(g); setModal(true); }}><Pencil size={15} className="text-gray-400 hover:text-gray-600" /></button>
                     <button onClick={() => {
                       setGroups(prev => prev.filter(x => x.id !== g.id));
-                      base44.entities.SavingsGroup.delete(g.id).catch(() => {
+                      api.entities.SavingsGroup.delete(g.id).catch(() => {
                         toast({ title: "Delete failed", variant: "destructive" });
                         load();
                       });
@@ -135,9 +135,9 @@ function GroupForm({ edit, onClose, onSaved }) {
     setSaving(true);
     try {
       if (edit) {
-        await base44.entities.SavingsGroup.update(edit.id, form);
+        await api.entities.SavingsGroup.update(edit.id, form);
       } else {
-        await base44.entities.SavingsGroup.create(form);
+        await api.entities.SavingsGroup.create(form);
       }
       toast({ title: edit ? "Group updated" : "Group created" });
       onSaved();

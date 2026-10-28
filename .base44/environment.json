@@ -4,28 +4,13 @@
   "startCommand": "docker compose -f docker-compose.base44.yml up -d",
   "secrets": [
     {
-      "name": "BASE44_APP_ID",
-      "description": "Base44 app whose tables, records, media and users are the migration source.",
-      "requiredAtBoot": true
-    },
-    {
-      "name": "BASE44_ADMIN_TOKEN",
-      "description": "Base44 admin token used to read the app's entities, users and media files.",
-      "requiredAtBoot": true
-    },
-    {
       "name": "VITE_SUPABASE_URL",
-      "description": "Supabase project URL. Also used as SUPABASE_URL by the migration service.",
+      "description": "Supabase project URL the app reads and signs users in against.",
       "requiredAtBoot": true
     },
     {
-      "name": "SUPABASE_SERVICE_ROLE_KEY",
-      "description": "Supabase service role key: data writes, storage buckets/objects and auth admin calls.",
-      "requiredAtBoot": true
-    },
-    {
-      "name": "SUPABASE_ACCESS_TOKEN",
-      "description": "Supabase personal access token, used for DDL (tables, RLS policies) via the Management API.",
+      "name": "VITE_SUPABASE_ANON_KEY",
+      "description": "Supabase anon/publishable key used by the browser client (protected by row level security).",
       "requiredAtBoot": true
     }
   ]

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTheme } from "next-themes";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { Settings, Bell, Shield, Globe, Palette, Building2, Printer, Save, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -58,7 +58,7 @@ export default function SettingsPage() {
     toast({ title: "Account Deletion", description: "Logging you out. Account deletion will be processed.", variant: "destructive" });
     setDeleteDialogOpen(false);
     try {
-      await base44.auth.logout();
+      await api.auth.logout();
     } catch (err) {
       window.location.href = "/login";
     }

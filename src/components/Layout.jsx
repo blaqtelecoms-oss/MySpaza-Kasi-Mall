@@ -5,8 +5,7 @@ import {
   LayoutDashboard, ShoppingCart, Package, TrendingUp, DollarSign,
   Users, Truck, BookOpen, BarChart2, Settings, Menu, X, Bell,
   Building2, GraduationCap, Bot, CreditCard, ChevronDown, ChevronRight,
-  Banknote, UserCheck, Calculator, RefreshCw, Wallet, ArrowLeft, TrendingDown, Receipt,
-  Database
+  Banknote, UserCheck, Calculator, RefreshCw, Wallet, ArrowLeft, TrendingDown, Receipt
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { queryClientInstance } from "@/lib/query-client";
@@ -32,7 +31,6 @@ const navItems = [
   { icon: CreditCard, label: "Funding Hub", path: "/funding" },
   { icon: Wallet, label: "MySpaza Card", path: "/myspaza-card" },
   { icon: Settings, label: "Settings", path: "/settings" },
-  { icon: Database, label: "Migration", path: "/migration" },
 ];
 
 export default function Layout() {
@@ -78,7 +76,7 @@ export default function Layout() {
         {/* Logo */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <img src="https://media.base44.com/images/public/6a4415977639497c1bfe27ef/afdb5279a_My_Spaza-removebg-preview.png" alt="My Spaza" className="w-10 h-10 rounded-xl object-cover" />
+            <img src="/brand/logo.png" alt="My Spaza" className="w-10 h-10 rounded-xl object-cover" />
             <div>
               <h1 className="text-white font-bold text-lg leading-none tracking-tight">My Spaza</h1>
               <p className="text-white/50 text-xs">Business Manager</p>

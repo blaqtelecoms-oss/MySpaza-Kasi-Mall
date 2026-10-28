@@ -5,7 +5,7 @@ export default function AuthLayout({ icon: Icon, title, subtitle, footer, childr
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <img src="https://media.base44.com/images/public/6a4415977639497c1bfe27ef/afdb5279a_My_Spaza-removebg-preview.png" alt="My Spaza" className="w-20 h-20 rounded-2xl object-cover mx-auto mb-2" />
+          <img src="/brand/logo.png" alt="My Spaza" className="w-20 h-20 rounded-2xl object-cover mx-auto mb-2" />
           <p className="text-sm font-semibold text-green-700 mb-4">My Spaza</p>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">{title}</h1>
           {subtitle && <p className="text-muted-foreground mt-2">{subtitle}</p>}

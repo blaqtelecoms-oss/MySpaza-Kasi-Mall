@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
 import {
   TrendingDown, Search, Phone, Wallet, CheckCircle, UserPlus, ArrowLeft,
@@ -41,7 +41,7 @@ export default function DebtorsControl() {
     setSaving(true);
     try {
       const newBalance = Math.max(0, (paymentFor.outstanding_balance || 0) - amount);
-      await base44.entities.Customer.update(paymentFor.id, { outstanding_balance: newBalance });
+      await api.entities.Customer.update(paymentFor.id, { outstanding_balance: newBalance });
       invalidateCustomer("Customer");
       toast({ title: "Payment recorded", description: `${formatCurrency(amount)} received from ${paymentFor.name}` });
       setPaymentFor(null);

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Camera, ImagePlus, Loader2, X } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function ProductImageUpload({ value, onChange }) {
@@ -17,7 +17,7 @@ export default function ProductImageUpload({ value, onChange }) {
     }
     setUploading(true);
     try {
-      const res = await base44.integrations.Core.UploadPublicFile({ file });
+      const res = await api.integrations.Core.UploadPublicFile({ file });
       onChange(res.file_url);
       toast({ title: "Image added", description: "Product photo uploaded" });
     } catch (err) {

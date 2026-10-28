@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Wifi, QrCode, ScanLine } from "lucide-react";
 
-const LOGO_URL = "https://media.base44.com/images/public/6a71f906799690812c4b06c9/34e4639da_My_Spaza-removebg-preview.png";
+const LOGO_URL = "/brand/logo.png";
 
 export default function CardDisplay({ balance = 0, holderName = "Shop Owner", cardNumber = "4012 5800 2026 0918" }) {
   const [flipped, setFlipped] = useState(false);
