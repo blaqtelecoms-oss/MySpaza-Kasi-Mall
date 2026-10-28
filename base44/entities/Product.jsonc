@@ -1,0 +1,68 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "barcode": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "cost_price": {
+      "type": "number"
+    },
+    "selling_price": {
+      "type": "number"
+    },
+    "stock_quantity": {
+      "type": "number"
+    },
+    "min_stock_level": {
+      "type": "number"
+    },
+    "max_stock_level": {
+      "type": "number"
+    },
+    "unit": {
+      "type": "string"
+    },
+    "pack_size": {
+      "type": "number"
+    },
+    "supplier_id": {
+      "type": "string"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean"
+    },
+    "vat_applicable": {
+      "type": "boolean"
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "batch_number": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "selling_price"
+  ],
+  "name": "Product"
+}

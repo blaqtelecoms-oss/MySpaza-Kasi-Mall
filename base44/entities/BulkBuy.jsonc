@@ -1,0 +1,85 @@
+{
+  "name": "BulkBuy",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "product_name": {
+      "type": "string"
+    },
+    "wholesaler_id": {
+      "type": "string"
+    },
+    "wholesaler_name": {
+      "type": "string"
+    },
+    "total_quantity": {
+      "type": "number"
+    },
+    "unit": {
+      "type": "string"
+    },
+    "unit_cost": {
+      "type": "number"
+    },
+    "total_cost": {
+      "type": "number"
+    },
+    "min_members": {
+      "type": "number",
+      "default": 1
+    },
+    "max_members": {
+      "type": "number"
+    },
+    "member_count": {
+      "type": "number",
+      "default": 1
+    },
+    "per_member_cost": {
+      "type": "number"
+    },
+    "per_member_quantity": {
+      "type": "number"
+    },
+    "created_by_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "filled",
+        "ordered",
+        "delivered",
+        "distributed",
+        "cancelled"
+      ],
+      "default": "open"
+    },
+    "order_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "delivery_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "members": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "product_name",
+    "total_quantity",
+    "unit_cost"
+  ]
+}

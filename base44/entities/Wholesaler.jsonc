@@ -1,0 +1,45 @@
+{
+  "name": "Wholesaler",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Wholesale",
+        "Hardware",
+        "Cash & Carry",
+        "Grocery",
+        "Other"
+      ]
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "card_accepted": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_participating": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

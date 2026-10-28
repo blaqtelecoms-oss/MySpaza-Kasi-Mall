@@ -1,0 +1,50 @@
+{
+  "type": "object",
+  "properties": {
+    "product_id": {
+      "type": "string"
+    },
+    "product_name": {
+      "type": "string"
+    },
+    "adjustment_type": {
+      "type": "string",
+      "enum": [
+        "damaged",
+        "expired",
+        "theft",
+        "count_correction",
+        "received",
+        "returned"
+      ]
+    },
+    "quantity_before": {
+      "type": "number"
+    },
+    "quantity_adjusted": {
+      "type": "number"
+    },
+    "quantity_after": {
+      "type": "number"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "approved_by": {
+      "type": "string"
+    },
+    "adjustment_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "product_id",
+    "adjustment_type",
+    "quantity_adjusted"
+  ],
+  "name": "StockAdjustment"
+}

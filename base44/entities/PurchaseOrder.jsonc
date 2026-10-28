@@ -1,0 +1,61 @@
+{
+  "type": "object",
+  "properties": {
+    "order_number": {
+      "type": "string"
+    },
+    "supplier_id": {
+      "type": "string"
+    },
+    "supplier_name": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "total_amount": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "sent",
+        "received",
+        "partial",
+        "cancelled"
+      ]
+    },
+    "order_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "expected_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "received_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "payment_status": {
+      "type": "string",
+      "enum": [
+        "unpaid",
+        "partial",
+        "paid"
+      ]
+    }
+  },
+  "required": [
+    "supplier_id",
+    "order_date"
+  ],
+  "name": "PurchaseOrder"
+}
