@@ -21,6 +21,8 @@ See `README.md` for local setup, environment variables and the Supabase schema.
   cache and write queue wrapped around `client.entities`.
 - `server/`: zero-dependency Node email service (Resend sends + delivery
   webhook). Runs as the `api` compose service on host port `8000`.
+- `public/brand/auth-bg.jpg`: sign-in hero photo (grocery shelves), CC0 from
+  Wikimedia Commons ("Grocery Outlet - September 2024" by Sarah Stierch).
 - `src/pages/EmailEvents.jsx`: operator-only Resend event log at
   `/admin/email-events` ("Email Log" in the sidebar, `role = 'admin'` only).
 - `supabase/migrations/`: SQL policies applied to the Supabase project.

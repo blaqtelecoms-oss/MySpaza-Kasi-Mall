@@ -22,7 +22,22 @@ const HIGHLIGHTS = [
 export default function AuthLayout({ title, subtitle, footer, children }) {
   return (
     <div className="min-h-screen bg-[#F5F6F8] text-slate-900 lg:grid lg:grid-cols-[1.05fr_1fr]">
-      <aside className="relative hidden overflow-hidden border-r border-slate-200/80 bg-white px-14 py-12 lg:flex lg:flex-col lg:justify-between">
+      <aside className="relative hidden overflow-hidden border-r border-slate-200/80 bg-[#F7F9FA] px-14 py-12 lg:flex lg:flex-col lg:justify-between">
+        {/* Shop photo, faded into the panel by a cool gradient wash */}
+        <img
+          src="/brand/auth-bg.jpg"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-[0.85] [filter:grayscale(0.45)_saturate(0.9)]"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(125deg,rgba(248,250,252,0.95)_0%,rgba(241,245,249,0.86)_32%,rgba(204,251,241,0.45)_60%,rgba(13,148,136,0.34)_100%)]"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,#F7F9FA_0%,rgba(247,249,250,0.6)_32%,rgba(247,249,250,0)_64%)]"
+        />
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -right-28 -top-28 h-80 w-80 rounded-full bg-gradient-to-br from-teal-100/80 to-transparent blur-2xl"
