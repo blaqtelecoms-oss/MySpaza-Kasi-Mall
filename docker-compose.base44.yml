@@ -29,6 +29,8 @@ services:
       - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
       - BASE44_PUBLIC_HOST_SUFFIX
       - BASE44_SANDBOX_HOST_DOMAIN
+      # Where the Vite dev server proxies /migration-api (see vite.config.js).
+      - MIGRATION_API_URL=http://migration:8000
     volumes:
       - .:/app
       # Placeholder local-dev CLI session, read-only: the dev backend seeds its
@@ -63,3 +65,53 @@ services:
       timeout: 5s
       retries: 5
       start_period: 180s
+
+  # Base44 -> Supabase migration API (admin-only, see src/pages/Migration.jsx).
+  # Runs straight from ./server with no dependencies; the browser reaches it
+  # through the Vite dev server proxy on the single preview origin.
+  migration:
+    image: node:22
+    restart: on-failure
+    working_dir: /app
+    command: ["sh", "-ec", "exec node --watch server/index.js"]
+    environment:
+      - MIGRATION_PORT=8000
+      - BASE44_ENTITIES_DIR=/app/base44/entities
+      # Source of truth for app data/users/media (the live Base44 app).
+      - BASE44_SOURCE_API_URL=https://base44.app
+      # Session tokens come from the local dev backend in the sandbox. It binds
+      # loopback only, so verification goes back through the app's own preview
+      # origin (the Vite server), which proxies /api to it.
+      - BASE44_AUTH_API_URL=https://3000-${BASE44_PUBLIC_HOST_SUFFIX}
+      - MIGRATION_RUNS_DIR=/data/runs
+    env_file:
+      # Platform-managed secrets (Base44 admin token, Supabase keys). Never in git.
+      - /run/base44/app.env
+    volumes:
+      - .:/app
+      - migration-runs:/data/runs
+    ports:
+      - "8000:8000"
+    depends_on:
+      app:
+        condition: service_healthy
+    labels:
+      base44.project: Migration API
+      base44.kind: api
+      base44.port: "8000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - |
+          fetch('http://127.0.0.1:8000/health')
+            .then((r) => process.exit(r.ok ? 0 : 1))
+            .catch(() => process.exit(1));
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  migration-runs:

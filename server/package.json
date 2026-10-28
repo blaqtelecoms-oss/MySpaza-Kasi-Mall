@@ -1,0 +1,14 @@
+{
+  "name": "base44-supabase-migration",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Move Base44 app tables, data, media and accounts into Supabase.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  }
+}

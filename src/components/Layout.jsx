@@ -5,7 +5,8 @@ import {
   LayoutDashboard, ShoppingCart, Package, TrendingUp, DollarSign,
   Users, Truck, BookOpen, BarChart2, Settings, Menu, X, Bell,
   Building2, GraduationCap, Bot, CreditCard, ChevronDown, ChevronRight,
-  Banknote, UserCheck, Calculator, RefreshCw, Wallet, ArrowLeft, TrendingDown, Receipt
+  Banknote, UserCheck, Calculator, RefreshCw, Wallet, ArrowLeft, TrendingDown, Receipt,
+  Database
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { queryClientInstance } from "@/lib/query-client";
@@ -31,6 +32,7 @@ const navItems = [
   { icon: CreditCard, label: "Funding Hub", path: "/funding" },
   { icon: Wallet, label: "MySpaza Card", path: "/myspaza-card" },
   { icon: Settings, label: "Settings", path: "/settings" },
+  { icon: Database, label: "Migration", path: "/migration" },
 ];
 
 export default function Layout() {
