@@ -19,6 +19,10 @@ See `README.md` for local setup, environment variables and the Supabase schema.
 - `src/lib/AuthContext.jsx`: session/profile state for the whole app.
 - `src/lib/offlineLayer.js` + `offlineStorage/offlineQueue/syncEngine`: offline
   cache and write queue wrapped around `client.entities`.
+- `server/`: zero-dependency Node email service (Resend sends + delivery
+  webhook). Runs as the `api` compose service on host port `8000`.
+- `src/pages/EmailEvents.jsx`: operator-only Resend event log at
+  `/admin/email-events` ("Email Log" in the sidebar, `role = 'admin'` only).
 - `supabase/migrations/`: SQL policies applied to the Supabase project.
 - `docker-compose.base44.yml`: sandbox runtime (file name is required by the
   platform; the app itself has no Base44 dependency).
@@ -39,7 +43,9 @@ See `README.md` for local setup, environment variables and the Supabase schema.
 
 ## Sandbox runtime (`docker-compose.base44.yml`)
 
-`docker compose -f docker-compose.base44.yml up -d` runs one service:
+`docker compose -f docker-compose.base44.yml up -d` runs two services.
+
+`app` (host port `3000`):
 
 - Node 22 running `npm install && npm run dev` (Vite) from the bind-mounted
   checkout, so edits hot-reload. Host port `3000` maps to Vite's `:5173`.
@@ -48,8 +54,38 @@ See `README.md` for local setup, environment variables and the Supabase schema.
 - `BASE44_PREVIEW_MODE=1` makes `vite.config.js` bind the dev server to
   `0.0.0.0` so the preview proxy can reach it. Unset, `npm run dev` keeps its
   default localhost binding.
-- The app talks to Supabase directly from the browser, so there is no local
-  backend service and no `/api` proxy.
+- The app talks to Supabase directly from the browser; the only local backend
+  is the email service.
+
+`api` (host port `8000`, in-container `8080`):
+
+- Runs `node server/index.js` with no install step and no `depends_on`. Its
+  healthcheck hits
+  `/health`, which reports whether Resend and the Supabase writer are configured
+  — a 200 with `resend: false` means a secret is missing, not that the service is
+  down.
+- Webhooks are called by third parties, so they target the api service's own
+  port host, `https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/...`, not the Vite
+  dev server.
+
+## Email (Resend)
+
+- `POST /api/hooks/supabase/send-email` is Supabase's *Send Email* auth hook: it
+  renders the verification code and sends it with Resend from
+  `noreply@myspaza-app.co.za`. Supabase needs the hook enabled with the endpoint
+  and secret in the dashboard; until then Supabase sends its own auth emails and
+  the app still works (the signup OTP flow is unchanged either way).
+- `POST /api/webhooks/resend` stores every Resend event in `public.email_event`.
+  `provider_event_id` (the Svix message id) is unique, so retries are idempotent.
+- Both routes verify the Standard Webhooks HMAC over the raw body
+  (`server/lib/webhook-signature.js`) and answer 503 when the matching secret is
+  missing, 401 when the signature is wrong.
+- Never log request bodies or email tokens: they carry verification codes.
+- Verify the service without the real secrets by running a second instance with
+  throwaway ones, e.g. inside the container:
+  `PORT=8099 RESEND_WEBHOOK_SECRET=whsec_<b64> node server/index.js`, then post a
+  payload signed the same way. `RESEND_API_KEY=re_invalid…` proves the send path
+  without delivering mail (Resend answers "API key is invalid" → 502).
 
 Verification note: the preview harness restores a signed-out session on every
 fresh page load, so pages behind `ProtectedRoute` can only be checked by signing

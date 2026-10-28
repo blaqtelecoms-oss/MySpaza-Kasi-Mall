@@ -19,6 +19,7 @@ export async function handleResendWebhook({ rawBody, headers, respond }) {
     signature: headers["svix-signature"],
   });
   if (!verification.ok) {
+    console.warn(`[resend-webhook] rejected: ${verification.reason}`);
     return respond(verification.status, { error: verification.reason });
   }
 

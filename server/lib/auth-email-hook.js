@@ -111,6 +111,7 @@ export async function handleAuthEmailHook({ rawBody, headers, respond }) {
     signature: headers["webhook-signature"] || headers["svix-signature"],
   });
   if (!verification.ok) {
+    console.warn(`[send-email] rejected: ${verification.reason}`);
     return respond(verification.status, { error: { message: verification.reason } });
   }
 

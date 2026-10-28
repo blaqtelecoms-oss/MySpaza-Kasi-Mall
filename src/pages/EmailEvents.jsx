@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Mail, RefreshCw, Search, ShieldAlert, MailCheck, MailWarning, Send } from "lucide-react";
 import { useEntityQuery } from "@/hooks/useEntityQuery";
 import { useAuth } from "@/lib/AuthContext";
@@ -45,7 +44,6 @@ const shortId = (value) => (value ? `${String(value).slice(0, 12)}…` : "—");
 
 export default function EmailEvents() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const isAdmin = user?.role === "admin";
 

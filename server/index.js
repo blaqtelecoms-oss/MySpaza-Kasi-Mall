@@ -69,6 +69,16 @@ const server = http.createServer(async (req, res) => {
   if (!handler) return json(res, 404, { error: "Not found" });
   if (req.method !== "POST") return json(res, 405, { error: "Method not allowed" });
 
+  // Access log: method, path and status only — never the body, which carries
+  // verification codes.
+  const started = Date.now();
+  const respond = (status, body) => {
+    console.log(
+      `${req.method} ${path} -> ${status} (${Date.now() - started}ms, ${rawBodyLength} byte body)`
+    );
+    json(res, status, body);
+  };
+
   let rawBody;
   try {
     rawBody = await readRawBody(req);
@@ -76,12 +86,10 @@ const server = http.createServer(async (req, res) => {
     return json(res, 413, { error: error.message });
   }
 
+  const rawBodyLength = Buffer.byteLength(rawBody);
+
   try {
-    await handler({
-      rawBody,
-      headers: req.headers,
-      respond: (status, body) => json(res, status, body),
-    });
+    await handler({ rawBody, headers: req.headers, respond });
   } catch (error) {
     console.error(`[${path}] unhandled error: ${error.message}`);
     json(res, 500, { error: "Unexpected error" });

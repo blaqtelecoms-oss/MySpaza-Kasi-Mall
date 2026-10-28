@@ -1,9 +1,12 @@
 # Local sandbox runtime for My Spaza.
 #
-# One service: the Vite dev server (live reload) talking to the app's Supabase
-# project. Supabase credentials arrive from the platform-managed env file;
-# nothing about the app is baked into an image, so every edit is picked up
-# without a rebuild.
+# Two services, both running from the bind-mounted checkout (nothing is baked
+# into an image, so every edit is picked up without a rebuild):
+#   app — the Vite dev server (live reload), talking to the app's Supabase
+#         project. Supabase credentials arrive from the platform-managed env
+#         file.
+#   api — the Resend email service in server/: sends Supabase auth emails
+#         (signup verification codes) and records Resend delivery webhooks.
 services:
   app:
     image: node:22
