@@ -28,6 +28,8 @@ See `README.md` for local setup, environment variables and the Supabase schema.
 - `supabase/migrations/`: SQL policies applied to the Supabase project.
 - `docker-compose.base44.yml`: sandbox runtime (file name is required by the
   platform; the app itself has no Base44 dependency).
+- `netlify.toml`, `public/_redirects`, `netlify/functions/api.mjs`: the public
+  deployment at `myspaza-app.co.za` (see below).
 
 ## Working Notes
 
@@ -138,6 +140,27 @@ re-run it after a schema change.
 - Webhooks are called by third parties, so they target the api service's own
   port host, `https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/...`, not the Vite
   dev server.
+
+## Public deployment (Netlify, https://myspaza-app.co.za)
+
+The public site is a static build of `dist/`, not the dev server, so anything the
+preview supplies has to exist there explicitly:
+
+- `public/_redirects` holds the SPA fallback (`/* /index.html 200`) and routes
+  `/api/*` to `netlify/functions/api.mjs`. Without the fallback every path but
+  `/` is a Netlify 404 — deep links, password-reset links and invitation links
+  all break, while the preview keeps working because Vite does this itself.
+  It lives in `public/` (not only in `netlify.toml`) so it also travels into a
+  drag-and-drop `dist/` deploy.
+- `netlify/functions/api.mjs` is a thin adapter over the same handlers the
+  sandbox email service runs (`server/lib/*`): it maps the rewritten
+  `/.netlify/functions/api/<path>` back to `/api/<path>` and passes the raw body
+  and headers through. When adding an endpoint to `server/index.js`, add the
+  same path to its `routes` map, or the public site 404s where the preview works.
+- The function needs its secrets as Netlify environment variables
+  (`RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `SUPABASE_SEND_EMAIL_HOOK_SECRET`,
+  `SUPABASE_SERVICE_ROLE_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
+  `APP_URL`). `VITE_*` are also inlined into the browser bundle at build time.
 
 ## Supabase auth settings (project-level, not in this repo)
 

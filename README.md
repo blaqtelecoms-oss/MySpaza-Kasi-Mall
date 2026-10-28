@@ -88,8 +88,11 @@ so provider retries cannot duplicate history.
 The sandbox public host changes whenever the environment is recreated. If
 verification emails or delivery events stop arriving, update the Supabase hook
 URI and the Resend webhook endpoint to
-`https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/...`. A real deployment must serve
-those two paths from `server/index.js` behind `https://myspaza-app.co.za/api/...`.
+`https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/...`.
+
+On the public site the same three paths are served at
+`https://myspaza-app.co.za/api/...` by `netlify/functions/api.mjs`, which runs the
+handlers from `server/` — see [Deploying](#deploying-to-myspaza-appcoza).
 
 ### Email log
 
@@ -104,6 +107,32 @@ update public.profiles set role = 'admin' where email = 'you@example.com';
 `server/lib/resend.js` exports `sendEmail({ to, subject, html, text })` if another
 app notification needs to go out; add a route in `server/index.js` and it reuses
 the same sender and secret handling.
+
+## Deploying to myspaza-app.co.za
+
+The public site is a static Netlify deploy: `npm run build` producing `dist/`.
+Two things a static host does not get from the Vite dev server are declared in
+the repo:
+
+- `public/_redirects` — `/api/*` goes to the `netlify/functions/api.mjs`
+  function (invitations, the Supabase Send-Email hook, the Resend webhook);
+  every other path serves `index.html` so deep links (`/inventory`),
+  password-reset links and invitation links (`/invite/<token>`) load the app
+  instead of a Netlify 404.
+- `netlify.toml` — build command, publish directory and functions directory.
+
+Set these on the Netlify site (Site configuration → Environment variables);
+they are never committed:
+
+| Variable | Used by |
+| --- | --- |
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | the browser bundle (inlined at build time, so set them before building) |
+| `RESEND_API_KEY` | the function: invitation and auth emails |
+| `RESEND_WEBHOOK_SECRET`, `SUPABASE_SEND_EMAIL_HOOK_SECRET` | the function: verifying its two signed callers |
+| `SUPABASE_SERVICE_ROLE_KEY` | the function: writing the email log |
+| `APP_URL` = `https://myspaza-app.co.za` | invitation links (defaults to the caller's origin) |
+
+The function bundles `server/lib` at deploy time and needs no extra dependency.
 
 ## Checks
 

@@ -1,0 +1,12 @@
+# Netlify deployment for https://myspaza-app.co.za.
+#
+# The app is a static Vite build plus one function that serves the same /api
+# endpoints as the sandbox email service (server/). Routing — the SPA fallback
+# and the /api rewrite — lives in public/_redirects so it travels into dist/ and
+# also applies to a manual drag-and-drop deploy.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"

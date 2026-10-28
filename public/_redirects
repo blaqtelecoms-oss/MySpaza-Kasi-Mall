@@ -1,0 +1,15 @@
+# Netlify routing for the public site (myspaza-app.co.za).
+#
+# The sandbox preview gets both of these from the Vite dev server (SPA fallback
+# plus the /api proxy). A static deploy has neither, so they are declared here,
+# in the publish directory, where Netlify reads them.
+
+# The app's own endpoints run as a function that shares the sandbox email
+# service's handlers (server/): invitations, the Supabase Send-Email hook and
+# the Resend delivery webhook.
+/api/*  /.netlify/functions/api/:splat  200
+
+# Single-page app: every other path serves index.html so a deep link, a
+# password-reset link or an invitation link (/invite/<token>) loads the app
+# instead of Netlify's 404 page. Rules apply only when no real file matches.
+/*  /index.html  200
