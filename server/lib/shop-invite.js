@@ -74,6 +74,25 @@ async function shopNameFor(shopId) {
   return (await profileName(shopId)) || "a My Spaza shop";
 }
 
+/**
+ * Which shop an invitation belongs to: the caller's own account, or one of the
+ * branches they own. The id is never taken on trust — the `shop` row has to
+ * name the caller as its owner.
+ */
+async function resolveShop(caller, requested) {
+  const shopId = String(requested || "").trim();
+  if (!shopId || shopId === caller.id) return caller.id;
+  try {
+    const rows = await selectRows(
+      "shop",
+      `select=id,owner_id&id=eq.${encodeURIComponent(shopId)}&limit=1`
+    );
+    return rows?.[0]?.owner_id === caller.id ? shopId : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Where the invitation link points: the deployed app, or the preview origin. */
 function appUrl(headers) {
   const configured = (process.env.APP_URL || "").replace(/\/+$/, "");
@@ -112,6 +131,11 @@ export async function handleCreateShopInvite({ rawBody, headers, respond }) {
   }
   const role = sanitiseRole(body.role);
 
+  const shopId = await resolveShop(caller, body.shopId);
+  if (!shopId) {
+    return respond(403, { error: "You can only invite employees to a shop you own." });
+  }
+
   const base = appUrl(headers);
   if (!base) {
     return respond(503, { error: "Invitation links need APP_URL set on the email service." });
@@ -119,7 +143,7 @@ export async function handleCreateShopInvite({ rawBody, headers, respond }) {
 
   const existing = await selectRows(
     "shop_member",
-    `select=id&shop_id=eq.${encodeURIComponent(caller.id)}&member_email=eq.${encodeURIComponent(email)}&limit=1`
+    `select=id&shop_id=eq.${encodeURIComponent(shopId)}&member_email=eq.${encodeURIComponent(email)}&limit=1`
   );
   if (existing?.length) {
     return respond(409, { error: "That email already has access to this shop." });
@@ -133,12 +157,12 @@ export async function handleCreateShopInvite({ rawBody, headers, respond }) {
   // open invitation per address, so the old one is removed first.
   await deleteRows(
     "shop_invite",
-    `shop_id=eq.${encodeURIComponent(caller.id)}&email=eq.${encodeURIComponent(email)}&accepted_at=is.null`
+    `shop_id=eq.${encodeURIComponent(shopId)}&email=eq.${encodeURIComponent(email)}&accepted_at=is.null`
   );
 
   await insertRow("shop_invite", {
     id: randomBytes(9).toString("hex"),
-    shop_id: caller.id,
+    shop_id: shopId,
     email,
     role,
     permissions,
@@ -147,7 +171,7 @@ export async function handleCreateShopInvite({ rawBody, headers, respond }) {
     invited_by_id: caller.id,
   });
 
-  const shopName = await shopNameFor(caller.id);
+  const shopName = await shopNameFor(shopId);
   const inviterName = caller.fullName || (await profileName(caller.id)) || caller.email;
 
   try {

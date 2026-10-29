@@ -1,6 +1,8 @@
-import { CalendarClock, Crown } from "lucide-react";
+import { CalendarClock, Crown, Store, Megaphone, MegaphoneOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import IconTile from "@/components/ui/icon-tile";
 import PlanCard from "@/components/billing/PlanCard";
+import { useAuth } from "@/lib/AuthContext";
 import { useSubscription } from "@/lib/SubscriptionContext";
 import { PLANS, PLAN_BY_KEY } from "@/lib/plans";
 
@@ -18,18 +20,20 @@ export default function BillingPanel() {
 
   const current = PLAN_BY_KEY[plan] || PLAN_BY_KEY.free;
   const scheduled = pendingPlan ? PLAN_BY_KEY[pendingPlan] : null;
+  const { shop } = useAuth();
+  const shopsUsed = shop?.shops?.length ?? 1;
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Crown size={18} /> Current Plan
+            <IconTile icon={Crown} tone="amber" size="sm" /> Current Plan
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2 rounded-xl border border-teal-600/30 bg-teal-50/60 p-4">
-            <div>
+            <div className="min-w-0">
               <p className="text-lg font-bold text-slate-900">{current.name}</p>
               <p className="text-xs text-slate-600">{current.blurb}</p>
             </div>
@@ -37,6 +41,27 @@ export default function BillingPanel() {
               {current.priceLabel}
               <span className="ml-1 text-xs font-medium text-slate-500">{current.cadence}</span>
             </p>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2.5">
+              <IconTile icon={Store} tone="teal" size="sm" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-slate-900">
+                  {shopsUsed} of {shop?.shopLimit ?? "unlimited"} shop{shop?.shopLimit === 1 ? "" : "s"}
+                </p>
+                <p className="text-[11px] text-slate-500">Shops &amp; branches in use</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2.5">
+              <IconTile icon={current.ads ? Megaphone : MegaphoneOff} tone={current.ads ? "slate" : "teal"} size="sm" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-slate-900">{current.ads ? "Ads included" : "No ads"}</p>
+                <p className="text-[11px] text-slate-500">
+                  {current.ads ? "Sponsored banners on some screens" : "A clean, ad-free app"}
+                </p>
+              </div>
+            </div>
           </div>
 
           {currentPeriodEnd && plan !== "free" && (

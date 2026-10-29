@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { api } from '@/api/client';
 import { supabase } from '@/api/supabase';
+import { queryClientInstance } from '@/lib/query-client';
 import { syncCacheOwner, clearUserData } from '@/lib/userDataReset';
 
 const AuthContext = createContext();
@@ -40,6 +41,15 @@ export const AuthProvider = ({ children }) => {
     if (shopContext.isOwner) return true;
     return Boolean(shopContext.permissions?.[module]);
   }, [shopContext]);
+
+  // Owner switching between their shops. The cached rows belong to the branch
+  // that was open, so the query cache is dropped before the new branch loads.
+  const switchShop = useCallback(async (shopId) => {
+    if (!shopId || shopId === shopContextRef.current?.shopId) return null;
+    await api.shop.switchTo(shopId);
+    queryClientInstance.clear();
+    return refreshShop();
+  }, [refreshShop]);
 
   const canEditModule = useCallback((module) => {
     if (!shopContext) return false;
@@ -142,6 +152,7 @@ export const AuthProvider = ({ children }) => {
       can,
       canEdit: canEditModule,
       refreshShop,
+      switchShop,
       logout,
       navigateToLogin,
       checkUserAuth,

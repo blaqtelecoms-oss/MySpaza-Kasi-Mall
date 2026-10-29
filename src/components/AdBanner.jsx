@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import { useSubscription } from "@/lib/SubscriptionContext";
 import SedfaBanner from "@/components/ads/SedfaBanner";
 import NewcastleLedBanner from "@/components/ads/NewcastleLedBanner";
 import AmajubaBanner from "@/components/ads/AmajubaBanner";
@@ -15,6 +16,8 @@ const BANNERS = [
 export default function AdBanner() {
   const [index, setIndex] = useState(0);
   const [dismissed, setDismissed] = useState(false);
+  // Premium and Ultra are ad-free; only the Free plan shows sponsored banners.
+  const { planInfo } = useSubscription();
 
   useEffect(() => {
     if (dismissed) return;
@@ -24,6 +27,7 @@ export default function AdBanner() {
     return () => clearInterval(interval);
   }, [dismissed]);
 
+  if (!planInfo.ads) return null;
   if (dismissed) return null;
 
   const { Component } = BANNERS[index];

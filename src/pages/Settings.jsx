@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { api } from "@/api/client";
 import BillingPanel from "@/components/billing/BillingPanel";
+import ShopsPanel from "@/components/billing/ShopsPanel";
 import { DEFAULT_SHOP_SETTINGS, SHOP_LOGO_BUCKET, toShopSettings } from "@/lib/shopSettings";
 import { Settings, Bell, Shield, Globe, Palette, Building2, Printer, Save, Trash2, Loader2, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,10 +51,14 @@ export default function SettingsPage() {
   const { toast } = useToast();
   // The paywall's "Compare plans" opens this page at ?tab=billing.
   const [searchParams] = useSearchParams();
-  const [tab, setTab] = useState(searchParams.get("tab") === "billing" ? "billing" : "business");
+  const initialTab = ["billing", "shops"].includes(searchParams.get("tab"))
+    ? searchParams.get("tab")
+    : "business";
+  const [tab, setTab] = useState(initialTab);
 
   useEffect(() => {
-    if (searchParams.get("tab") === "billing") setTab("billing");
+    const requested = searchParams.get("tab");
+    if (requested && ["billing", "shops"].includes(requested)) setTab(requested);
   }, [searchParams]);
 
   // Load the shop's saved profile (one row per account, owned by the user).
@@ -138,11 +143,12 @@ export default function SettingsPage() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid grid-cols-5 w-full">
+        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1 sm:grid-cols-6">
           <TabsTrigger value="business" className="text-xs">Business</TabsTrigger>
           <TabsTrigger value="receipt" className="text-xs">Receipt</TabsTrigger>
           <TabsTrigger value="notifications" className="text-xs">Alerts</TabsTrigger>
           <TabsTrigger value="security" className="text-xs">Security</TabsTrigger>
+          <TabsTrigger value="shops" className="text-xs">Shops</TabsTrigger>
           <TabsTrigger value="billing" className="text-xs">Billing</TabsTrigger>
         </TabsList>
 
@@ -363,16 +369,22 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* Shops & branches */}
+        <TabsContent value="shops">
+          <ShopsPanel />
+        </TabsContent>
         {/* Billing & Subscription */}
         <TabsContent value="billing">
           <BillingPanel />
         </TabsContent>
       </Tabs>
 
-      <Button onClick={handleSave} className="w-full h-12 bg-green-600 hover:bg-green-700 font-bold">
-        <Save size={18} className="mr-2" />
-        Save Settings
-      </Button>
+      {(tab === "business" || tab === "receipt") && (
+        <Button onClick={handleSave} className="w-full h-12 bg-green-600 hover:bg-green-700 font-bold">
+          <Save size={18} className="mr-2" />
+          Save Settings
+        </Button>
+      )}
 
       {/* Delete Account Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

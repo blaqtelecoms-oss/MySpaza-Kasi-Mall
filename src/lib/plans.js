@@ -30,6 +30,13 @@ export const FEATURES = [
 
 const RANK = { free: 0, premium: 1, ultra: 2 };
 
+/**
+ * How many shops (branches) a plan may run. `null` means unlimited.
+ * `public.shop_limit()` in 20261030_shop_branches.sql enforces the same
+ * numbers in Postgres, so a crafted request cannot add a third shop on Premium.
+ */
+export const SHOP_LIMITS = { free: 1, premium: 2, ultra: null };
+
 export const PLANS = [
   {
     key: "free",
@@ -38,7 +45,15 @@ export const PLANS = [
     priceLabel: "R0",
     cadence: "forever",
     blurb: "Everything a spaza needs to run the day to day.",
+    shops: SHOP_LIMITS.free,
+    ads: true,
     features: FEATURES.filter((f) => f.plan === "free").map((f) => f.label),
+    highlights: [
+      "1 shop or branch",
+      "POS, Inventory, Cash Up & Daily Sales",
+      "Expenses, Suppliers & Academy",
+      "Supported by occasional ads",
+    ],
   },
   {
     key: "premium",
@@ -46,9 +61,16 @@ export const PLANS = [
     price: 199,
     priceLabel: "R199",
     cadence: "per month",
-    blurb: "Add your team, your numbers and your AI coach.",
+    blurb: "Add your team, your numbers, your AI coach and a second branch.",
+    shops: SHOP_LIMITS.premium,
+    ads: false,
     features: FEATURES.filter((f) => RANK[f.plan] <= RANK.premium).map((f) => f.label),
-    highlights: ["Employees and invitations", "Reports", "Spaza Coach AI", "Customers"],
+    highlights: [
+      "2 shops or branches",
+      "No ads",
+      "Everything in Free, plus Employees",
+      "Reports, Customers & Spaza Coach AI",
+    ],
   },
   {
     key: "ultra",
@@ -56,9 +78,16 @@ export const PLANS = [
     price: 399,
     priceLabel: "R399",
     cadence: "per month",
-    blurb: "The whole app, including debtors, accounting and banking.",
+    blurb: "The whole app with unlimited shops, debtors, accounting and banking.",
+    shops: SHOP_LIMITS.ultra,
+    ads: false,
     features: FEATURES.map((f) => f.label),
-    highlights: ["Everything in Premium", "Debtors Control", "Accounting", "Banking"],
+    highlights: [
+      "Unlimited shops or branches",
+      "No ads",
+      "Everything in Premium, plus Debtors & Accounting",
+      "Banking and the full reports suite",
+    ],
   },
 ];
 
@@ -82,6 +111,24 @@ export function featureLabel(featureKey) {
 /** Does this plan include the feature? */
 export function planIncludes(planKey, featureKey) {
   return planRank(planKey) >= planRank(featurePlan(featureKey));
+}
+
+/** How many shops/branches this plan may run; `null` means unlimited. */
+export function shopLimit(planKey) {
+  // Ultra is an explicit `null`, so `??` would wrongly fall back to Free here.
+  return planKey in SHOP_LIMITS ? SHOP_LIMITS[planKey] : SHOP_LIMITS.free;
+}
+
+/** Free is the only plan that shows the sponsored banners. */
+export function planHasAds(planKey) {
+  return planRank(planKey) === 0;
+}
+
+/** "1 shop", "2 shops" or "Unlimited shops" for plan copy and limit warnings. */
+export function shopCountLabel(planKey) {
+  const limit = shopLimit(planKey);
+  if (limit === null) return "Unlimited shops";
+  return `${limit} shop${limit === 1 ? "" : "s"}`;
 }
 
 /**

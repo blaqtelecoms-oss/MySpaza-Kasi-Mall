@@ -147,6 +147,53 @@ client matrix is `src/lib/plans.js`.
   (the sub must be a real uuid — `auth.uid()` casts it), then call
   `shop_module_level` at each tier.
 
+## Shops and branches
+
+`supabase/migrations/20261030_shop_branches.sql` adds the shop record and the
+plan's shop allowance.
+
+- **A shop is a trading location, not the account.** The primary shop keeps the
+  historic id — the owner's auth uid — so every existing row (`created_by_id`)
+  stays put. A branch is a `public.shop` row with a generated id, and its records
+  are simply the rows whose `created_by_id` is that branch id.
+- `public.shop_owner_id(shop)` resolves an account: the `shop` row's `owner_id`,
+  falling back to the id itself (which is what makes a not-yet-created primary
+  shop work). `public.is_shop_owner()` is the predicate every app-table policy now
+  uses — the owner sees every branch, an employee still needs
+  `shop_module_level`. Never go back to `created_by_id = auth.uid()`, or branches
+  become invisible.
+- Because RLS now hands the owner *all* their branches, the client must scope
+  reads itself: `SHOP_SCOPED` in `src/api/client.js` adds
+  `created_by_id = <active shop>` to list/filter/get/update/delete/updateMany/
+  deleteMany. Add a new shop table there or its branches will blend together.
+- Shop allowance: Free 1, Premium 2, Ultra unlimited. Both copies must move
+  together — `SHOP_LIMITS` in `src/lib/plans.js` (UI) and `public.shop_limit()`
+  (enforcement inside `public.create_shop()`). `null` means unlimited, so never
+  resolve it with `??` (that turns Ultra into 1).
+- Writes go through security-definer RPCs, never direct table writes:
+  `ensure_shop()` (creates the primary row, named after the saved business name),
+  `create_shop(name, address)` (counts the owner's shops and refuses past the
+  limit), `rename_shop(id, name)` (also updates the branch's `shop_settings`
+  business name). `my_shops()` and `shop_billing(shop)` are the reads the context
+  uses; `shop_billing` resolves the plan through the owner, so a branch runs on
+  the owner's subscription.
+- Each branch has its own `shop_settings` row; `create_shop()` copies the primary
+  shop's business/receipt blob (with the new name) so receipts print immediately.
+- The active branch lives in `localStorage` per account
+  (`myspaza:active-shop:<user id>`) and in `shopIdCache`; `AuthContext.switchShop`
+  clears the React Query cache before reloading the shop context, because cached
+  entity queries are keyed per entity, not per shop.
+- Employee invitations follow the branch: `api.shop.invite` posts the active
+  `shopId` and `server/lib/shop-invite.js` only accepts it when the `shop` row
+  names the caller as owner.
+- Ads: only Free sees them. `AdBanner` and `AcademyPromoBanner` return `null` when
+  `planInfo.ads` is false (`planHasAds()` in `plans.js`).
+- Verify with a throwaway auth user (service role), sign in through the login form
+  (email + password), then: add branches up to the plan limit and confirm
+  `create_shop` refuses one more, switch branches and confirm a product created in
+  one branch is absent in the other, and delete the user plus its `shop` /
+  `shop_settings` / `shop_subscription` / data rows afterwards.
+
 ## Sandbox runtime (`docker-compose.base44.yml`)
 
 `docker compose -f docker-compose.base44.yml up -d` runs two services.

@@ -7,7 +7,7 @@
 // level security decides what each user can see.
 import { supabase } from "@/api/supabase";
 import { installOfflineLayer } from "@/lib/offlineLayer";
-import { resolvePlan } from "@/lib/plans";
+import { resolvePlan, shopLimit } from "@/lib/plans";
 
 /** Entity name → Postgres table. */
 const TABLES = {
@@ -124,12 +124,40 @@ async function currentUserId() {
   return session?.user?.id ?? null;
 }
 
-// A shop is the owner's account: rows an employee writes belong to the shop
-// they work in, not to the employee's own account. Cached per signed-in user so
-// every write does not re-read the membership.
+// Tables whose rows belong to one shop. `created_by_id` is the shop id, so a
+// read is always narrowed to the branch the account is working in — the owner
+// may run several, and the database then lets them see all of them.
+const SHOP_SCOPED = new Set([
+  "bank_account", "bulk_buy", "cash_up", "customer", "expense", "product",
+  "purchase_order", "sale", "savings_group", "shop_settings", "stock_adjustment",
+  "stockfell_account", "supplier", "wholesaler", "wholesaler_discount",
+]);
+
+// A shop is the owner's account (or one of its branches): rows an employee
+// writes belong to the shop they work in, not to the employee's own account.
+// Cached per signed-in user so every write does not re-read the membership.
 let shopIdCache = { userId: null, shopId: null };
 
-/** The shop whose data the signed-in user works in (their own, or employer's). */
+const ACTIVE_SHOP_KEY = (userId) => `myspaza:active-shop:${userId}`;
+
+function readActiveShop(userId) {
+  try {
+    return window.localStorage.getItem(ACTIVE_SHOP_KEY(userId));
+  } catch {
+    return null;
+  }
+}
+
+function writeActiveShop(userId, shopId) {
+  try {
+    if (shopId) window.localStorage.setItem(ACTIVE_SHOP_KEY(userId), shopId);
+    else window.localStorage.removeItem(ACTIVE_SHOP_KEY(userId));
+  } catch {
+    /* private mode or storage disabled: the in-memory cache still works */
+  }
+}
+
+/** The shop whose data the signed-in user works in (a branch, or employer's). */
 async function currentShopId() {
   const userId = await currentUserId();
   if (!userId) return null;
@@ -141,7 +169,22 @@ async function currentShopId() {
     .eq("member_id", userId)
     .maybeSingle();
 
-  const shopId = data?.status === "active" ? data.shop_id : userId;
+  let shopId = data?.status === "active" ? data.shop_id : null;
+
+  if (!shopId) {
+    // An owner may run more than one shop; the branch they picked last wins.
+    const stored = readActiveShop(userId);
+    if (stored && stored !== userId) {
+      const { data: branch } = await supabase
+        .from("shop")
+        .select("id, owner_id")
+        .eq("id", stored)
+        .maybeSingle();
+      shopId = branch?.owner_id === userId ? branch.id : null;
+    }
+  }
+
+  shopId = shopId || userId;
   shopIdCache = { userId, shopId };
   return shopId;
 }
@@ -170,16 +213,30 @@ function stripUndefined(record) {
 
 function makeEntity(entity) {
   const name = table(entity);
+  const scoped = SHOP_SCOPED.has(name);
+
+  // Reads and writes stay inside the branch the account is working in, even
+  // though the owner's policies cover every branch they own.
+  const shopCriteria = async () => {
+    if (!scoped) return {};
+    const shopId = await currentShopId();
+    return shopId ? { created_by_id: shopId } : {};
+  };
 
   return {
     table: name,
 
-    list(sort, limit) {
-      return ordered(() => supabase.from(name).select("*"), null, sort, limit);
+    async list(sort, limit) {
+      return ordered(() => supabase.from(name).select("*"), await shopCriteria(), sort, limit);
     },
 
-    filter(criteria, sort, limit) {
-      return ordered(() => supabase.from(name).select("*"), criteria, sort, limit);
+    async filter(criteria, sort, limit) {
+      return ordered(
+        () => supabase.from(name).select("*"),
+        { ...(criteria || {}), ...(await shopCriteria()) },
+        sort,
+        limit
+      );
     },
 
     async get(id) {
@@ -187,6 +244,7 @@ function makeEntity(entity) {
         .from(name)
         .select("*")
         .eq("id", id)
+        .match(await shopCriteria())
         .maybeSingle();
       if (isMissingColumn(error)) throw new Error(error.message);
       if (error) return unwrap({ data, error });
@@ -206,12 +264,12 @@ function makeEntity(entity) {
       const { id: _ignored, created_date: _created, ...changes } = payload;
       const row = { ...stripUndefined(changes), updated_date: new Date().toISOString() };
       return unwrap(
-        await supabase.from(name).update(row).eq("id", id).select().single()
+        await supabase.from(name).update(row).eq("id", id).match(await shopCriteria()).select().single()
       );
     },
 
     async delete(id) {
-      unwrap(await supabase.from(name).delete().eq("id", id));
+      unwrap(await supabase.from(name).delete().eq("id", id).match(await shopCriteria()));
       return { id };
     },
 
@@ -233,6 +291,7 @@ function makeEntity(entity) {
 
     async bulkUpdate(entries = []) {
       const updated = [];
+      const scope = await shopCriteria();
       for (const entry of entries) {
         const { id, ...changes } = entry;
         if (!id) continue;
@@ -242,6 +301,7 @@ function makeEntity(entity) {
               .from(name)
               .update({ ...stripUndefined(changes), updated_date: new Date().toISOString() })
               .eq("id", id)
+              .match(scope)
               .select()
               .single()
           )
@@ -252,13 +312,19 @@ function makeEntity(entity) {
 
     async updateMany(criteria, changes = {}) {
       const patch = { ...(changes.$set || changes), updated_date: new Date().toISOString() };
-      const query = applyFilters(supabase.from(name).update(patch), criteria);
+      const query = applyFilters(supabase.from(name).update(patch), {
+        ...(criteria || {}),
+        ...(await shopCriteria()),
+      });
       unwrap(await query);
       return { ok: true };
     },
 
     async deleteMany(criteria) {
-      const query = applyFilters(supabase.from(name).delete(), criteria);
+      const query = applyFilters(supabase.from(name).delete(), {
+        ...(criteria || {}),
+        ...(await shopCriteria()),
+      });
       unwrap(await query);
       return { ok: true };
     },
@@ -488,15 +554,31 @@ const shop = {
       .maybeSingle();
 
     const active = membership?.status === "active" ? membership : null;
-    const shopId = active?.shop_id || userId;
 
-    let shopName = null;
-    const { data: settings } = await supabase
-      .from("shop_settings")
-      .select("business")
-      .eq("created_by_id", shopId)
-      .maybeSingle();
-    shopName = settings?.business?.name?.trim() || null;
+    // An owner runs a list of shops; the first visit creates the primary row
+    // (named after the business details already saved).
+    let shops = [];
+    if (!active) {
+      const { data, error } = await supabase.rpc("my_shops");
+      if (!error && Array.isArray(data)) shops = data;
+      if (!error && shops.length === 0) {
+        const { data: created } = await supabase.rpc("ensure_shop");
+        if (created) shops = [created];
+      }
+    }
+
+    const shopId = active?.shop_id || (await currentShopId());
+    const shopRow = shops.find((row) => row.id === shopId) || null;
+
+    let shopName = shopRow?.name?.trim() || null;
+    if (!shopName) {
+      const { data: settings } = await supabase
+        .from("shop_settings")
+        .select("business")
+        .eq("created_by_id", shopId)
+        .maybeSingle();
+      shopName = settings?.business?.name?.trim() || null;
+    }
 
     if (!shopName) {
       const { data: profile } = await supabase
@@ -507,27 +589,79 @@ const shop = {
       shopName = profile?.full_name || profile?.email || null;
     }
 
-    // The shop's subscription (one row per shop, readable by its owner and
-    // employees). A missing row — or an as-yet unmigrated project — is Free.
-    const { data: subscription } = await supabase
-      .from("shop_subscription")
-      .select("plan,pending_plan,pending_plan_effective_at,current_period_end")
-      .eq("shop_id", shopId)
-      .maybeSingle();
+    // The plan belongs to the owner, so every branch resolves the same one.
+    // `shop_billing` handles that lookup (and works for employees too).
+    let billing = null;
+    const { data: billingRow } = await supabase.rpc("shop_billing", { p_shop: shopId });
+    billing = billingRow || null;
+
+    if (!billing) {
+      // An as-yet unmigrated project: fall back to the subscription row.
+      const { data: subscription } = await supabase
+        .from("shop_subscription")
+        .select("plan,pending_plan,pending_plan_effective_at,current_period_end")
+        .eq("shop_id", shopRow?.owner_id || shopId)
+        .maybeSingle();
+      billing = subscription
+        ? {
+            plan: resolvePlan(subscription),
+            pending_plan: subscription.pending_plan,
+            pending_plan_effective_at: subscription.pending_plan_effective_at,
+            current_period_end: subscription.current_period_end,
+          }
+        : null;
+    }
+
+    const plan = billing?.plan || "free";
+    const limit = shopLimit(plan);
 
     return {
       shopId,
       shopName,
+      shops: shops.map((row) => ({
+        id: row.id,
+        name: row.name,
+        address: row.address || null,
+        isPrimary: Boolean(row.is_primary),
+      })),
+      shopLimit: limit,
+      canAddShop: !active && (limit === null || shops.length < limit),
       isOwner: !active,
       role: active?.role || "Owner",
       permissions: active?.permissions || {},
       memberId: active?.member_id || null,
       memberEmail: active?.member_email || null,
-      plan: resolvePlan(subscription),
-      pendingPlan: subscription?.pending_plan || null,
-      pendingPlanEffectiveAt: subscription?.pending_plan_effective_at || null,
-      currentPeriodEnd: subscription?.current_period_end || null,
+      plan,
+      pendingPlan: billing?.pending_plan || null,
+      pendingPlanEffectiveAt: billing?.pending_plan_effective_at || null,
+      currentPeriodEnd: billing?.current_period_end || null,
     };
+  },
+
+  /** Owner: add a shop or branch, within the plan's limit (enforced in SQL). */
+  async create({ name, address } = {}) {
+    const { data, error } = await supabase.rpc("create_shop", {
+      p_name: name,
+      p_address: address || null,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Owner: rename a shop or branch. */
+  async rename(shopId, name) {
+    const { data, error } = await supabase.rpc("rename_shop", { p_id: shopId, p_name: name });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Work in another of the owner's shops. */
+  async switchTo(shopId) {
+    const userId = await currentUserId();
+    if (!userId) throw new Error("Sign in to switch shops.");
+    writeActiveShop(userId, shopId);
+    shopIdCache = { userId, shopId };
+    return shopId;
   },
 
   /**
@@ -546,13 +680,16 @@ const shop = {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) throw new Error("Sign in to invite employees.");
 
+    // The employee joins the branch the owner is working in.
+    const shopId = await currentShopId();
+
     const response = await fetch("/api/invitations", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ email, role, permissions }),
+      body: JSON.stringify({ email, role, permissions, shopId }),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || `Invitation failed (${response.status})`);
