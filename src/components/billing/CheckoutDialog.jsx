@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, CreditCard, Loader2, ShieldCheck } from "lucide-react";
+import { Check, CircleNotch, CreditCard, ShieldCheck } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -59,7 +59,7 @@ export default function CheckoutDialog({ open, planKey, onOpenChange }) {
             <ul className="mt-3 space-y-1.5">
               {(target.highlights || target.features.slice(0, 4)).map((feature) => (
                 <li key={feature} className="flex items-center gap-2 text-xs text-slate-600">
-                  <Check className="h-3.5 w-3.5 shrink-0 text-teal-600" />
+                  <Check size={13} weight="bold" className="shrink-0 text-teal-600" />
                   {feature}
                 </li>
               ))}
@@ -74,7 +74,7 @@ export default function CheckoutDialog({ open, planKey, onOpenChange }) {
           ) : (
             <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                <CreditCard className="h-4 w-4" />
+                <CreditCard size={18} weight="duotone" />
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-slate-800">•••• •••• •••• 4242</p>
@@ -84,7 +84,7 @@ export default function CheckoutDialog({ open, planKey, onOpenChange }) {
           )}
 
           <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
-            <ShieldCheck className="h-3.5 w-3.5 text-teal-600" />
+            <ShieldCheck size={14} weight="duotone" className="text-teal-600" />
             Simulated payment — no real charge is made and no card details are collected.
           </p>
 
@@ -105,7 +105,7 @@ export default function CheckoutDialog({ open, planKey, onOpenChange }) {
             >
               {processing ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <CircleNotch size={16} weight="bold" className="mr-2 animate-spin" />
                   Processing…
                 </>
               ) : downgrade ? (

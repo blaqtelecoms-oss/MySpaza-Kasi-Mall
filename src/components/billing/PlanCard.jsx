@@ -1,9 +1,11 @@
-import { Check, Crown, Sparkles } from "lucide-react";
+import { Check, Crown, Sparkle, Storefront } from "@phosphor-icons/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import IconTile from "@/components/ui/icon-tile";
 import { planRank } from "@/lib/plans";
 
-const ICONS = { free: Check, premium: Sparkles, ultra: Crown };
+const ICONS = { free: Storefront, premium: Sparkle, ultra: Crown };
+const TONES = { free: "slate", premium: "teal", ultra: "amber" };
 
 /** One plan card in the Billing section of Settings. */
 export default function PlanCard({ plan, currentPlan, onChoose }) {
@@ -19,9 +21,7 @@ export default function PlanCard({ plan, currentPlan, onChoose }) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-            <Icon className="h-4 w-4" />
-          </span>
+          <IconTile icon={Icon} tone={TONES[plan.key] || "slate"} size="sm" />
           <p className="text-sm font-semibold text-slate-900">{plan.name}</p>
         </div>
         {isCurrent && <Badge className="bg-teal-700 text-white hover:bg-teal-700">Current</Badge>}
@@ -36,7 +36,7 @@ export default function PlanCard({ plan, currentPlan, onChoose }) {
       <ul className="mt-3 flex-1 space-y-1.5">
         {(plan.highlights || plan.features).map((feature) => (
           <li key={feature} className="flex items-start gap-2 text-xs text-slate-600">
-            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600" />
+            <Check size={13} weight="bold" className="mt-0.5 shrink-0 text-teal-600" />
             {feature}
           </li>
         ))}

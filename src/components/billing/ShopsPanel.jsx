@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Crown, Loader2, Pencil, Plus, Store, X } from "lucide-react";
+import { Check, CircleNotch, Crown, MapPinPlus, PencilSimple, Plus, Storefront, X } from "@phosphor-icons/react";
 import { api } from "@/api/client";
 import { useAuth } from "@/lib/AuthContext";
 import { useSubscription } from "@/lib/SubscriptionContext";
@@ -81,7 +81,7 @@ export default function ShopsPanel() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <IconTile icon={Store} tone="teal" size="sm" /> Shops &amp; branches
+            <IconTile icon={Storefront} tone="teal" size="sm" /> Shops &amp; branches
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -106,7 +106,7 @@ export default function ShopsPanel() {
                   className={`rounded-xl border p-3 ${isActive ? "border-teal-600 bg-teal-50/40" : "border-slate-200 bg-white"}`}
                 >
                   <div className="flex items-start gap-2">
-                    <IconTile icon={Store} tone={isActive ? "teal" : "slate"} size="sm" />
+                    <IconTile icon={Storefront} tone={isActive ? "teal" : "slate"} size="sm" />
                     <div className="min-w-0 flex-1">
                       {renamingId === row.id ? (
                         <div className="flex items-center gap-1">
@@ -126,7 +126,7 @@ export default function ShopsPanel() {
                             className="rounded-md p-1 text-teal-700 hover:bg-teal-100"
                             aria-label="Save name"
                           >
-                            <Check size={14} />
+                            <Check size={14} weight="bold" />
                           </button>
                           <button
                             type="button"
@@ -134,7 +134,7 @@ export default function ShopsPanel() {
                             className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
                             aria-label="Cancel rename"
                           >
-                            <X size={14} />
+                            <X size={14} weight="bold" />
                           </button>
                         </div>
                       ) : (
@@ -146,7 +146,7 @@ export default function ShopsPanel() {
                             className="rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                             aria-label={`Rename ${row.name}`}
                           >
-                            <Pencil size={12} />
+                            <PencilSimple size={13} weight="regular" />
                           </button>
                         </div>
                       )}
@@ -205,7 +205,7 @@ export default function ShopsPanel() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <IconTile icon={Plus} tone="teal" size="sm" /> Add a shop or branch
+              <IconTile icon={MapPinPlus} tone="teal" size="sm" /> Add a shop or branch
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -235,7 +235,11 @@ export default function ShopsPanel() {
                   A branch keeps its own stock, sales and cash-ups. Your plan, team and receipt details carry over.
                 </p>
                 <Button type="submit" disabled={saving}>
-                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  {saving ? (
+                    <CircleNotch size={16} weight="bold" className="mr-2 animate-spin" />
+                  ) : (
+                    <Plus size={16} weight="bold" className="mr-2" />
+                  )}
                   Add shop
                 </Button>
               </div>

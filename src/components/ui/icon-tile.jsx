@@ -1,20 +1,21 @@
 import { cn } from "@/lib/utils";
 
-// One rounded tile behind every section icon, so headers across the app share
-// the same weight, radius and stroke instead of each screen inventing its own.
+// One chip behind every section icon, so headers across the app share the same
+// weight, radius and stroke. The chip stays neutral and the duotone icon carries
+// the colour, which reads like a real product's icon set instead of a pastel badge.
 const TONES = {
-  teal: "bg-teal-50 text-teal-700 ring-teal-600/15",
-  amber: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  slate: "bg-slate-100 text-slate-700 ring-slate-900/10",
-  ink: "bg-[#0D0D0D] text-[#FFD426] ring-black/20",
+  teal: "text-teal-700",
+  amber: "text-amber-600",
+  slate: "text-slate-600",
+  ink: "text-[#0D0D0D]",
 };
 
 const SIZES = {
-  sm: { box: "h-7 w-7 rounded-lg", icon: 14 },
-  md: { box: "h-9 w-9 rounded-xl", icon: 18 },
+  sm: { box: "h-8 w-8 rounded-lg", icon: 18 },
+  md: { box: "h-10 w-10 rounded-xl", icon: 22 },
 };
 
-export default function IconTile({ icon: Icon, tone = "teal", size = "md", className }) {
+export default function IconTile({ icon: Icon, tone = "teal", size = "md", weight = "fill", className }) {
   const palette = TONES[tone] || TONES.teal;
   const scale = SIZES[size] || SIZES.md;
 
@@ -22,13 +23,13 @@ export default function IconTile({ icon: Icon, tone = "teal", size = "md", class
     <span
       aria-hidden="true"
       className={cn(
-        "inline-flex shrink-0 items-center justify-center ring-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]",
+        "inline-flex shrink-0 items-center justify-center border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.05)]",
         palette,
         scale.box,
         className
       )}
     >
-      {Icon ? <Icon size={scale.icon} strokeWidth={1.9} /> : null}
+      {Icon ? <Icon size={scale.icon} weight={weight} /> : null}
     </span>
   );
 }

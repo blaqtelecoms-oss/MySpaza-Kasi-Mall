@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, ChevronDown, Plus, Store } from "lucide-react";
+import { CaretDown, Check, Plus, Storefront } from "@phosphor-icons/react";
 import { useAuth } from "@/lib/AuthContext";
 
 /**
@@ -47,7 +47,7 @@ export default function ShopSwitcher() {
         className="flex w-full items-center gap-2 rounded-xl bg-white/5 px-2.5 py-2 text-left ring-1 ring-white/10 transition hover:bg-white/10"
       >
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#FFD426] text-[#0D0D0D]">
-          <Store size={14} strokeWidth={2} />
+          <Storefront size={15} weight="fill" />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-xs font-semibold text-white">{active?.name || "My shop"}</span>
@@ -57,7 +57,7 @@ export default function ShopSwitcher() {
               : `${shop.shops.length} of ${shop.shopLimit} shops`}
           </span>
         </span>
-        <ChevronDown size={14} className={`shrink-0 text-white/50 transition-transform ${open ? "rotate-180" : ""}`} />
+        <CaretDown size={14} weight="bold" className={`shrink-0 text-white/50 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
@@ -76,7 +76,7 @@ export default function ShopSwitcher() {
                     }`}
                   >
                     <span className="mt-0.5 w-3.5 shrink-0">
-                      {isActive ? <Check size={13} /> : null}
+                      {isActive ? <Check size={13} weight="bold" /> : null}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{row.name}</span>

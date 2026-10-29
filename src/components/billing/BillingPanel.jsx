@@ -1,4 +1,4 @@
-import { CalendarClock, Crown, Store, Megaphone, MegaphoneOff } from "lucide-react";
+import { CalendarDots, Crown, Megaphone, SpeakerSimpleSlash, Storefront } from "@phosphor-icons/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import IconTile from "@/components/ui/icon-tile";
 import PlanCard from "@/components/billing/PlanCard";
@@ -45,7 +45,7 @@ export default function BillingPanel() {
 
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2.5">
-              <IconTile icon={Store} tone="teal" size="sm" />
+              <IconTile icon={Storefront} tone="teal" size="sm" />
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-slate-900">
                   {shopsUsed} of {shop?.shopLimit ?? "unlimited"} shop{shop?.shopLimit === 1 ? "" : "s"}
@@ -54,7 +54,7 @@ export default function BillingPanel() {
               </div>
             </div>
             <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2.5">
-              <IconTile icon={current.ads ? Megaphone : MegaphoneOff} tone={current.ads ? "slate" : "teal"} size="sm" />
+              <IconTile icon={current.ads ? Megaphone : SpeakerSimpleSlash} tone={current.ads ? "slate" : "teal"} size="sm" />
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-slate-900">{current.ads ? "Ads included" : "No ads"}</p>
                 <p className="text-[11px] text-slate-500">
@@ -66,7 +66,7 @@ export default function BillingPanel() {
 
           {currentPeriodEnd && plan !== "free" && (
             <p className="flex items-center gap-1.5 text-xs text-slate-500">
-              <CalendarClock className="h-3.5 w-3.5" />
+              <CalendarDots size={14} weight="duotone" />
               Current period ends {formatDate(currentPeriodEnd)}
             </p>
           )}
