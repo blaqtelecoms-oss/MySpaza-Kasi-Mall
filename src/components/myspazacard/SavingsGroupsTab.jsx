@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { MobileSelect } from "@/components/ui/mobile-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import GroupInvites from "@/components/myspazacard/GroupInvites";
 
 const fmt = (a) => "R " + Number(a || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -97,6 +98,8 @@ export default function SavingsGroupsTab() {
                     ))}
                   </div>
                 </div>
+
+                <GroupInvites groupKind="savings_group" groupId={g.id} groupName={g.name} />
               </div>
             );
           })}

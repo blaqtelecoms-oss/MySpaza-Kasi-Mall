@@ -189,8 +189,9 @@ npm run build
 Each shop owner can invite employees by email and decide exactly what each one
 may see and do (`/employees`, or **Employees** in the sidebar).
 
-1. **Invite** — the owner enters an email, picks a role and sets each module to
-   *None*, *View* or *Edit*. `POST /api/invitations` (served by `server/`)
+1. **Invite** — the owner enters the employee's name, email and monthly salary,
+   picks a role and sets each module to *None*, *View* or *Edit*.
+   `POST /api/invitations` (served by `server/`)
    verifies the owner's Supabase session, stores the invitation with a hashed
    token and emails the link with Resend. Links expire after 7 days, work once,
    and only for the invited address.
@@ -206,6 +207,26 @@ may see and do (`/employees`, or **Employees** in the sidebar).
 Module permissions are enforced by row level security
 (`supabase/migrations/20261028_shop_employees.sql`), not only by the menu, so a
 crafted API call cannot reach a module the owner did not grant.
+
+## Community groups (stokvel, savings groups, bulk buys)
+
+On **MySpaza Card** (`/myspaza-card`) the shop's savings account is its
+**stokvel**, alongside savings groups and bulk buy orders. Each one can invite
+friends by email:
+
+1. **Invite** — on a stokvel, savings group or bulk buy card the owner enters a
+   friend's email. `POST /api/group-invitations` verifies the owner's session,
+   checks the group belongs to their shop, stores a hashed token and emails the
+   link with Resend. Links work once, expire after 7 days and only for the
+   invited address.
+2. **Resend / cancel** — the pending invitations under each group can be resent
+   (a fresh link replaces the old one) or cancelled.
+3. **Accept** — `/invite/group/<token>` shows the group, shop and invited
+   address. After signing in with that address the friend accepts and is added
+   to the group's member list.
+
+The UI calls the account a stokvel; the table stays `stockfell_account` so no
+data moves (`supabase/migrations/20261031_group_invites_employee_pay.sql`).
 
 ## Subscriptions & plans
 

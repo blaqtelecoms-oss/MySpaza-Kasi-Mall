@@ -14,6 +14,7 @@
 import { handleAuthEmailHook } from "../../server/lib/auth-email-hook.js";
 import { handleResendWebhook } from "../../server/lib/resend-webhook.js";
 import { handleCreateShopInvite } from "../../server/lib/shop-invite.js";
+import { handleCreateGroupInvite } from "../../server/lib/group-invite.js";
 import { resendConfigured, senderAddress } from "../../server/lib/resend.js";
 import { supabaseRestConfigured } from "../../server/lib/supabase-rest.js";
 
@@ -21,6 +22,7 @@ const routes = {
   "/api/hooks/supabase/send-email": handleAuthEmailHook,
   "/api/webhooks/resend": handleResendWebhook,
   "/api/invitations": handleCreateShopInvite,
+  "/api/group-invitations": handleCreateGroupInvite,
 };
 
 const FUNCTION_PREFIX = "/.netlify/functions/api";

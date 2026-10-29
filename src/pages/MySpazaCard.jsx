@@ -3,7 +3,7 @@ import { useEntityQuery } from "@/hooks/useEntityQuery";
 import { CreditCard, Tag, PiggyBank, Users, Boxes } from "lucide-react";
 import CardDisplay from "@/components/myspazacard/CardDisplay";
 import DiscountsTab from "@/components/myspazacard/DiscountsTab";
-import StockfellTab from "@/components/myspazacard/StockfellTab";
+import StokvelTab from "@/components/myspazacard/StokvelTab";
 import SavingsGroupsTab from "@/components/myspazacard/SavingsGroupsTab";
 import BulkBuyTab from "@/components/myspazacard/BulkBuyTab";
 
@@ -11,7 +11,7 @@ const fmt = (a) => "R " + Number(a || 0).toLocaleString("en-ZA", { minimumFracti
 
 const TABS = [
   { id: "discounts", label: "Discounts", icon: Tag },
-  { id: "stockfell", label: "Stockfell", icon: PiggyBank },
+  { id: "stokvel", label: "Stokvel", icon: PiggyBank },
   { id: "groups", label: "Savings Groups", icon: Users },
   { id: "bulk", label: "Bulk Buy", icon: Boxes },
 ];
@@ -73,7 +73,7 @@ export default function MySpazaCard() {
       {/* Tab Content */}
       <div>
         {tab === "discounts" && <DiscountsTab />}
-        {tab === "stockfell" && <StockfellTab />}
+        {tab === "stokvel" && <StokvelTab />}
         {tab === "groups" && <SavingsGroupsTab />}
         {tab === "bulk" && <BulkBuyTab />}
       </div>

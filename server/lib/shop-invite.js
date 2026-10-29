@@ -7,99 +7,21 @@
 //
 // The invitation is stored as a SHA-256 hash of a random token; the raw token
 // only travels inside the Resend email link. Acceptance happens in
-// `public.accept_shop_invite()`, which checks the signed-in address matches.
+// `public.accept_shop_invite()`, which checks the signed-in address matches and
+// copies the employee's name and monthly salary onto the membership.
 import { createHash, randomBytes } from "node:crypto";
 import { sendEmployeeInvite } from "./invite-email.js";
 import { resendConfigured } from "./resend.js";
+import { deleteRows, insertRow, selectRows, supabaseRestConfigured } from "./supabase-rest.js";
 import {
-  deleteRows,
-  insertRow,
-  selectRows,
-  supabaseBaseUrl,
-  supabaseRestConfigured,
-} from "./supabase-rest.js";
-import { isEmail, sanitisePermissions, sanitiseRole } from "./modules.js";
-
-const INVITE_TTL_DAYS = 7;
-
-function publicKey() {
-  return (
-    process.env.VITE_SUPABASE_ANON_KEY ||
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    ""
-  );
-}
-
-/** Resolve the caller from their Supabase access token. */
-async function authenticate(authorization) {
-  const token = String(authorization || "").replace(/^Bearer\s+/i, "").trim();
-  const base = supabaseBaseUrl();
-  const key = publicKey();
-  if (!token || !base || !key) return null;
-
-  const response = await fetch(`${base}/auth/v1/user`, {
-    headers: { apikey: key, Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) return null;
-
-  const user = await response.json().catch(() => null);
-  if (!user?.id) return null;
-  return { id: user.id, email: user.email, fullName: user.user_metadata?.full_name };
-}
-
-async function profileName(shopId) {
-  try {
-    const rows = await selectRows(
-      "profiles",
-      `select=full_name,email&id=eq.${encodeURIComponent(shopId)}&limit=1`
-    );
-    return rows?.[0]?.full_name || rows?.[0]?.email || null;
-  } catch {
-    return null;
-  }
-}
-
-async function shopNameFor(shopId) {
-  try {
-    const rows = await selectRows(
-      "shop_settings",
-      `select=business&created_by_id=eq.${encodeURIComponent(shopId)}&limit=1`
-    );
-    const name = rows?.[0]?.business?.name?.trim();
-    if (name) return name;
-  } catch {
-    /* fall back to the owner's profile name */
-  }
-  return (await profileName(shopId)) || "a My Spaza shop";
-}
-
-/**
- * Which shop an invitation belongs to: the caller's own account, or one of the
- * branches they own. The id is never taken on trust — the `shop` row has to
- * name the caller as its owner.
- */
-async function resolveShop(caller, requested) {
-  const shopId = String(requested || "").trim();
-  if (!shopId || shopId === caller.id) return caller.id;
-  try {
-    const rows = await selectRows(
-      "shop",
-      `select=id,owner_id&id=eq.${encodeURIComponent(shopId)}&limit=1`
-    );
-    return rows?.[0]?.owner_id === caller.id ? shopId : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Where the invitation link points: the deployed app, or the preview origin. */
-function appUrl(headers) {
-  const configured = (process.env.APP_URL || "").replace(/\/+$/, "");
-  if (configured) return configured;
-  const origin = String(headers?.origin || "");
-  return /^https?:\/\//.test(origin) ? origin.replace(/\/+$/, "") : "";
-}
+  appUrl,
+  authenticate,
+  INVITE_TTL_DAYS,
+  profileName,
+  resolveShop,
+  shopNameFor,
+} from "./invite-core.js";
+import { isEmail, sanitiseFullName, sanitisePermissions, sanitiseRole, sanitiseSalary } from "./modules.js";
 
 export async function handleCreateShopInvite({ rawBody, headers, respond }) {
   if (!resendConfigured()) {
@@ -123,6 +45,14 @@ export async function handleCreateShopInvite({ rawBody, headers, respond }) {
   if (!isEmail(email)) return respond(400, { error: "Enter a valid email address." });
   if (email === String(caller.email || "").toLowerCase()) {
     return respond(400, { error: "You cannot invite your own account." });
+  }
+
+  const fullName = sanitiseFullName(body.fullName);
+  if (!fullName) return respond(400, { error: "Enter the employee's name." });
+
+  const monthlySalary = sanitiseSalary(body.monthlySalary);
+  if (Number.isNaN(monthlySalary)) {
+    return respond(400, { error: "Enter the monthly salary as a number of rand." });
   }
 
   const permissions = sanitisePermissions(body.permissions);
@@ -154,7 +84,8 @@ export async function handleCreateShopInvite({ rawBody, headers, respond }) {
   const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
   // A re-invite replaces the previous open link: the database allows only one
-  // open invitation per address, so the old one is removed first.
+  // open invitation per address, so the old one is removed first. Sending it
+  // again is also how an owner resends an invitation that went astray.
   await deleteRows(
     "shop_invite",
     `shop_id=eq.${encodeURIComponent(shopId)}&email=eq.${encodeURIComponent(email)}&accepted_at=is.null`
@@ -164,6 +95,8 @@ export async function handleCreateShopInvite({ rawBody, headers, respond }) {
     id: randomBytes(9).toString("hex"),
     shop_id: shopId,
     email,
+    full_name: fullName,
+    monthly_salary: monthlySalary,
     role,
     permissions,
     token_hash: tokenHash,
@@ -179,6 +112,8 @@ export async function handleCreateShopInvite({ rawBody, headers, respond }) {
       to: email,
       shopName,
       inviterName,
+      fullName,
+      monthlySalary,
       role,
       permissions,
       acceptUrl: `${base}/invite/${token}`,
@@ -190,5 +125,13 @@ export async function handleCreateShopInvite({ rawBody, headers, respond }) {
     });
   }
 
-  return respond(201, { ok: true, email, role, permissions, expires_at: expiresAt });
+  return respond(201, {
+    ok: true,
+    email,
+    full_name: fullName,
+    monthly_salary: monthlySalary,
+    role,
+    permissions,
+    expires_at: expiresAt,
+  });
 }

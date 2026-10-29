@@ -17,6 +17,7 @@ const TABLES = {
   Customer: "customer",
   EmailEvent: "email_event",
   Expense: "expense",
+  GroupInvite: "group_invite",
   Product: "product",
   PurchaseOrder: "purchase_order",
   Sale: "sale",
@@ -676,7 +677,7 @@ const shop = {
   },
 
   /** Ask the email service to create the invitation and send it with Resend. */
-  async invite({ email, role, permissions }) {
+  async invite({ email, fullName, monthlySalary, role, permissions }) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) throw new Error("Sign in to invite employees.");
 
@@ -689,7 +690,7 @@ const shop = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ email, role, permissions, shopId }),
+      body: JSON.stringify({ email, fullName, monthlySalary, role, permissions, shopId }),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || `Invitation failed (${response.status})`);
@@ -711,11 +712,17 @@ const shop = {
     return data;
   },
 
-  /** Owner: change an employee's role or modules. */
-  async updateMember(memberId, { role, permissions }) {
+  /** Owner: change an employee's details, role or modules. */
+  async updateMember(memberId, { role, permissions, full_name, monthly_salary }) {
     const { data, error } = await supabase
       .from("shop_member")
-      .update({ role, permissions, updated_date: new Date().toISOString() })
+      .update({
+        ...(full_name === undefined ? {} : { full_name }),
+        ...(monthly_salary === undefined ? {} : { monthly_salary }),
+        role,
+        permissions,
+        updated_date: new Date().toISOString(),
+      })
       .eq("id", memberId)
       .select()
       .single();
@@ -731,7 +738,47 @@ const shop = {
   },
 };
 
-export const api = { entities, auth, integrations, shop };
+/**
+ * Community groups — the stokvel, savings groups and bulk buys on the MySpaza
+ * Card. An invitation names one group in the branch the owner is working in;
+ * the email service creates it and Resend delivers the link. Accepting is a
+ * database function, so the invited address is checked before the member joins.
+ */
+const groups = {
+  async invite({ email, groupKind, groupId }) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Sign in to invite people to your group.");
+
+    const shopId = await currentShopId();
+    const response = await fetch("/api/group-invitations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ email, groupKind, groupId, shopId }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Invitation failed (${response.status})`);
+    return body;
+  },
+
+  /** Group, shop and address behind an invitation link (works signed out). */
+  async invitePreview(token) {
+    const { data, error } = await supabase.rpc("group_invite_preview", { p_token: token });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Accept the invitation for the signed-in account. */
+  async acceptInvite(token) {
+    const { data, error } = await supabase.rpc("accept_group_invite", { p_token: token });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+};
+
+export const api = { entities, auth, integrations, shop, groups };
 
 // Transparent offline caching + write queueing over the entity layer.
 installOfflineLayer(api);

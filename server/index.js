@@ -19,6 +19,7 @@ import http from "node:http";
 import { handleAuthEmailHook } from "./lib/auth-email-hook.js";
 import { handleResendWebhook } from "./lib/resend-webhook.js";
 import { handleCreateShopInvite } from "./lib/shop-invite.js";
+import { handleCreateGroupInvite } from "./lib/group-invite.js";
 import { resendConfigured, senderAddress } from "./lib/resend.js";
 import { supabaseRestConfigured } from "./lib/supabase-rest.js";
 
@@ -56,6 +57,7 @@ const routes = {
   "/api/hooks/supabase/send-email": handleAuthEmailHook,
   "/api/webhooks/resend": handleResendWebhook,
   "/api/invitations": handleCreateShopInvite,
+  "/api/group-invitations": handleCreateGroupInvite,
 };
 
 const server = http.createServer(async (req, res) => {

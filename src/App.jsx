@@ -40,6 +40,7 @@ const MySpazaCard = lazy(() => import('@/pages/MySpazaCard'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const EmailEvents = lazy(() => import('@/pages/EmailEvents'));
 const AcceptInvite = lazy(() => import('@/pages/AcceptInvite'));
+const AcceptGroupInvite = lazy(() => import('@/pages/AcceptGroupInvite'));
 
 const PageLoader = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -93,6 +94,7 @@ const AuthenticatedApp = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
         {/* Invitation link from the owner's email: works signed out. */}
         <Route path="/invite/:token" element={<AcceptInvite />} />
+        <Route path="/invite/group/:token" element={<AcceptGroupInvite />} />
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />

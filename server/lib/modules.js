@@ -45,3 +45,22 @@ export function sanitiseRole(input) {
 export function isEmail(value) {
   return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
+
+/** Trimmed display name, with runs of whitespace collapsed. */
+export function sanitiseFullName(input) {
+  return String(input ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+}
+
+/**
+ * Monthly salary in rand. Returns null when the owner left it blank, and NaN
+ * when the value is not a usable amount, so the caller can answer 400.
+ */
+export function sanitiseSalary(input) {
+  if (input === null || input === undefined || String(input).trim() === "") return null;
+  const value = Number(input);
+  if (!Number.isFinite(value) || value < 0 || value > 100000000) return NaN;
+  return Math.round(value * 100) / 100;
+}

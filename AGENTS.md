@@ -98,6 +98,11 @@ re-run it after a schema change.
   the Supabase access token, takes the shop from **the caller**, stores only a
   SHA-256 token hash in `shop_invite` (7-day expiry, one open invite per email)
   and emails the link with Resend. `APP_URL` sets the link base.
+- Employee details: the invitation carries the employee's **name** and
+  **monthly salary** (`shop_invite.full_name` / `monthly_salary`), captured in
+  the invite dialog and editable on the Employees page. `accept_shop_invite()`
+  copies both onto the membership (`shop_member`), so an accepted employee
+  keeps them; `api.shop.updateMember` is the only other writer.
 - Acceptance: `/invite/<token>` reads `shop_invite_preview()` (safe signed out)
   and calls `accept_shop_invite()`, which requires the signed-in address to match
   the invited one and refuses a second shop. Sign-in/registration honour
@@ -112,6 +117,34 @@ re-run it after a schema change.
 - Device caches (`src/lib/userDataReset.js`) are wiped whenever the signed-in
   identity changes, so an offline cache or queued write can never leak between
   accounts on a shared browser.
+
+## Community groups (stokvel, savings groups, bulk buys)
+
+`supabase/migrations/20261031_group_invites_employee_pay.sql` adds the model.
+The UI calls the shop's savings account a **stokvel**; the table and entity are
+still `stockfell_account` / `StockfellAccount`, so nothing migrates.
+
+- A group is one row the shop owns: the stokvel account (`stockfell_account`),
+  a `savings_group` or a `bulk_buy`. Members live in each row's `members` jsonb
+  array; `stockfell_account.members` was added for this.
+- Invitations mirror employees: the owner's browser POSTs
+  `/api/group-invitations` with `{ email, groupKind, groupId, shopId }`.
+  `server/lib/group-invite.js` verifies the Supabase session, resolves the shop
+  through `server/lib/invite-core.js` (shared with the employee invite), checks
+  the group belongs to that shop, stores a SHA-256 token hash in `group_invite`
+  and emails the link with Resend. `groupKind` is one of `stokvel`,
+  `savings_group`, `bulk_buy`.
+- Re-inviting is the **Resend** action: it deletes the open row for that
+  address and group (the unique index allows one) and sends a fresh token.
+- Acceptance: `/invite/group/<token>` reads `group_invite_preview()` (safe
+  signed out) and calls `accept_group_invite()`, which checks the signed-in
+  address and appends the member to the group's `members` array without
+  duplicating an existing email. `?next=` works the same as employee invites.
+- Pending invitations are read from `group_invite` through the entity layer
+  (`GroupInvite`), scoped by the owner policy `public.is_shop_owner(shop_id)` so
+  branches work too.
+- Adding an endpoint means three edits: `server/index.js` routes,
+  `netlify/functions/api.mjs` routes (the public site), and the client call.
 
 ## Subscriptions (plans + feature gating)
 
