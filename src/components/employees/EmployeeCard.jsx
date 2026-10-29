@@ -30,9 +30,16 @@ function ModuleChips({ permissions }) {
   );
 }
 
+const salaryLabel = (value) =>
+  value === null || value === undefined || value === ""
+    ? null
+    : "R " + Number(value).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " / month";
+
 /** An employee who has accepted and can sign in to this shop. */
 export function EmployeeCard({ member, onEdit, onRevoke }) {
-  const initial = (member.member_email || "?").trim().charAt(0).toUpperCase();
+  const displayName = member.full_name || member.member_email || "?";
+  const initial = displayName.trim().charAt(0).toUpperCase();
+  const salary = salaryLabel(member.monthly_salary);
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-4">
@@ -42,7 +49,13 @@ export function EmployeeCard({ member, onEdit, onRevoke }) {
               <span className="text-lg font-bold text-green-700 dark:text-green-400">{initial}</span>
             </div>
             <div className="min-w-0">
-              <h3 className="truncate text-sm font-bold text-foreground">{member.member_email}</h3>
+              <h3 className="truncate text-sm font-bold text-foreground">{displayName}</h3>
+              {member.full_name && (
+                <p className="truncate text-xs text-muted-foreground">{member.member_email}</p>
+              )}
+              <p className="mt-1 text-xs font-medium text-foreground">
+                {salary || <span className="font-normal text-muted-foreground">No salary set</span>}
+              </p>
               <Badge variant="outline" className="mt-1 text-xs">{member.role}</Badge>
               <div className="mt-1.5">
                 <ModuleChips permissions={member.permissions} />
@@ -88,7 +101,15 @@ export function PendingInviteCard({ invite, onCancel }) {
               <Mail size={18} className="text-muted-foreground" />
             </div>
             <div className="min-w-0">
-              <h3 className="truncate text-sm font-bold text-foreground">{invite.email}</h3>
+              <h3 className="truncate text-sm font-bold text-foreground">{invite.full_name || invite.email}</h3>
+              {invite.full_name && (
+                <p className="truncate text-xs text-muted-foreground">{invite.email}</p>
+              )}
+              <p className="mt-1 text-xs font-medium text-foreground">
+                {salaryLabel(invite.monthly_salary) || (
+                  <span className="font-normal text-muted-foreground">No salary set</span>
+                )}
+              </p>
               <Badge variant="outline" className="mt-1 text-xs">{invite.role}</Badge>
               <div className="mt-1.5">
                 <ModuleChips permissions={invite.permissions} />

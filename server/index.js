@@ -19,8 +19,12 @@ import http from "node:http";
 import { handleAuthEmailHook } from "./lib/auth-email-hook.js";
 import { handleResendWebhook } from "./lib/resend-webhook.js";
 import { handleCreateShopInvite } from "./lib/shop-invite.js";
+import { handleCreateGroupInvite } from "./lib/group-invite.js";
+import { handleCreateCheckout } from "./lib/billing-checkout.js";
+import { handleYocoWebhook } from "./lib/yoco-webhook.js";
 import { resendConfigured, senderAddress } from "./lib/resend.js";
 import { supabaseRestConfigured } from "./lib/supabase-rest.js";
+import { yocoConfigured, yocoWebhookConfigured } from "./lib/yoco.js";
 
 const PORT = Number(process.env.PORT || 8080);
 const MAX_BODY_BYTES = 256 * 1024;
@@ -56,6 +60,9 @@ const routes = {
   "/api/hooks/supabase/send-email": handleAuthEmailHook,
   "/api/webhooks/resend": handleResendWebhook,
   "/api/invitations": handleCreateShopInvite,
+  "/api/group-invitations": handleCreateGroupInvite,
+  "/api/billing/checkout": handleCreateCheckout,
+  "/api/webhooks/yoco": handleYocoWebhook,
 };
 
 const server = http.createServer(async (req, res) => {
@@ -67,6 +74,8 @@ const server = http.createServer(async (req, res) => {
       resend: resendConfigured(),
       from: senderAddress(),
       storage: supabaseRestConfigured(),
+      yoco: yocoConfigured(),
+      yoco_webhook: yocoWebhookConfigured(),
     });
   }
 

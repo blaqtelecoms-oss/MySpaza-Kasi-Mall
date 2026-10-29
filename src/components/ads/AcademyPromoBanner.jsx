@@ -1,9 +1,14 @@
 import { Link } from "react-router-dom";
 import { GraduationCap, ArrowRight } from "lucide-react";
+import { useSubscription } from "@/lib/SubscriptionContext";
 
 const LOGO_URL = "/brand/logo.png";
 
+/** A promotional banner, so it follows the plan's ads setting. */
 export default function AcademyPromoBanner() {
+  const { planInfo } = useSubscription();
+  if (!planInfo.ads) return null;
+
   return (
     <Link
       to="/academy"

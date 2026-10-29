@@ -28,10 +28,16 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
-export function renderEmployeeInvite({ shopName, inviterName, role, permissions, acceptUrl, expiresAt }) {
+export function renderEmployeeInvite({ shopName, inviterName, fullName, monthlySalary, role, permissions, acceptUrl, expiresAt }) {
   const modules = Object.entries(permissions || {})
     .map(([key, level]) => `${MODULE_LABELS[key] || key} (${level === "edit" ? "can edit" : "view only"})`)
     .join(", ");
+  const salary =
+    typeof monthlySalary === "number"
+      ? "R " +
+        monthlySalary.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+        " per month"
+      : null;
   const expiry = new Date(expiresAt).toLocaleDateString("en-ZA", {
     day: "numeric",
     month: "long",
@@ -43,15 +49,20 @@ export function renderEmployeeInvite({ shopName, inviterName, role, permissions,
   return {
     subject: `${safeInviter} invited you to ${safeShop} on My Spaza`,
     text: [
+      fullName ? `Hi ${fullName},` : "",
+      fullName ? "" : null,
       `${inviterName || "The shop owner"} invited you to join ${shopName} on My Spaza.`,
       "",
       `Role: ${role}`,
       `Access: ${modules || "No modules selected"}`,
+      salary ? `Monthly salary: ${salary}` : null,
       "",
       `Accept the invitation and set up your account: ${acceptUrl}`,
       "",
       `This link can be used once and expires on ${expiry}.`,
-    ].join("\n"),
+    ]
+      .filter((line) => line !== null)
+      .join("\n"),
     html: `
       <div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f9f9f9;padding:24px">
         <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;padding:28px;border:1px solid #ececec">
@@ -62,7 +73,12 @@ export function renderEmployeeInvite({ shopName, inviterName, role, permissions,
             Once you accept, the shop and your role appear after you sign in.
           </p>
           <p style="margin:0 0 6px;font-size:13px;color:#666;font-weight:600">What you can access</p>
-          <p style="margin:0 0 22px;font-size:14px;color:#444;line-height:1.55">${escapeHtml(modules || "No modules selected")}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:#444;line-height:1.55">${escapeHtml(modules || "No modules selected")}</p>
+          ${
+            salary
+              ? `<p style="margin:0 0 22px;font-size:14px;color:#444;line-height:1.55">Monthly salary: <strong>${escapeHtml(salary)}</strong></p>`
+              : `<p style="margin:0 0 22px"></p>`
+          }
           <a href="${escapeHtml(acceptUrl)}"
              style="display:inline-block;background:#27ae60;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 22px;border-radius:10px">
             Accept invitation

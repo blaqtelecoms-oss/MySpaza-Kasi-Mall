@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
-import { Plus, Boxes, Trash2, UserPlus, Check, Package } from "lucide-react";
+import { Plus, Boxes, Trash2, UserPlus, Check, Package, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { MobileSelect } from "@/components/ui/mobile-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import GroupInvites from "@/components/myspazacard/GroupInvites";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const fmt = (a) => "R " + Number(a || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -29,10 +31,24 @@ export default function BulkBuyTab() {
   const loading = ordersQuery.isLoading && !ordersQuery.data;
   const invalidate = useInvalidateEntity();
   const [modal, setModal] = useState(false);
+  const [editOrder, setEditOrder] = useState(null);
   const [joinOrder, setJoinOrder] = useState(null);
+  const [confirmOrder, setConfirmOrder] = useState(null);
   const { toast } = useToast();
 
   const load = () => { invalidate("BulkBuy"); invalidate("Wholesaler"); };
+
+  const removeOrder = async (order) => {
+    try {
+      await api.groups.remove("bulk_buy", order.id);
+      toast({ title: "Bulk buy removed", description: "Its open invitations were cancelled too." });
+    } catch (error) {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+    } finally {
+      setConfirmOrder(null);
+      load();
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -88,7 +104,13 @@ export default function BulkBuyTab() {
                       <UserPlus size={14} /> Join
                     </Button>
                   )}
-                  <button onClick={async () => { await api.entities.BulkBuy.delete(o.id); load(); }}>
+                  <button
+                    onClick={() => { setEditOrder(o); setModal(true); }}
+                    aria-label={`Edit ${o.title}`}
+                  >
+                    <Pencil size={15} className="text-gray-400 hover:text-gray-600" />
+                  </button>
+                  <button onClick={() => setConfirmOrder(o)} aria-label={`Remove ${o.title}`}>
                     <Trash2 size={15} className="text-red-400 hover:text-red-600" />
                   </button>
                 </div>
@@ -110,19 +132,45 @@ export default function BulkBuyTab() {
                   </div>
                 </div>
               )}
+
+              <GroupInvites groupKind="bulk_buy" groupId={o.id} groupName={o.title} />
             </div>
           ))}
         </div>
       )}
 
-      {modal && <BulkBuyForm wholesalers={wholesalers} onClose={() => setModal(false)} onSaved={() => { setModal(false); load(); }} />}
+      {modal && (
+        <BulkBuyForm
+          wholesalers={wholesalers}
+          edit={editOrder}
+          onClose={() => { setModal(false); setEditOrder(null); }}
+          onSaved={() => { setModal(false); setEditOrder(null); load(); }}
+        />
+      )}
       {joinOrder && <JoinDialog order={joinOrder} onClose={() => setJoinOrder(null)} onSaved={() => { setJoinOrder(null); load(); }} />}
+      {confirmOrder && (
+        <ConfirmDialog
+          open
+          onOpenChange={() => setConfirmOrder(null)}
+          title={`Remove "${confirmOrder.title}"?`}
+          description="The bulk buy, its member shares and any open invitations are removed. This cannot be undone."
+          confirmLabel="Remove bulk buy"
+          onConfirm={() => removeOrder(confirmOrder)}
+        />
+      )}
     </div>
   );
 }
 
-function BulkBuyForm({ wholesalers, onClose, onSaved }) {
-  const [form, setForm] = useState({
+function BulkBuyForm({ wholesalers, edit, onClose, onSaved }) {
+  const [form, setForm] = useState(edit ? {
+    title: edit.title || "", product_name: edit.product_name || "",
+    wholesaler_id: edit.wholesaler_id || "", wholesaler_name: edit.wholesaler_name || "",
+    total_quantity: Number(edit.total_quantity || 0), unit: edit.unit || "bags",
+    unit_cost: Number(edit.unit_cost || 0), max_members: Number(edit.max_members || 5),
+    created_by_name: edit.created_by_name || "Shop Owner", status: edit.status || "open",
+    members: edit.members || [], notes: edit.notes || "",
+  } : {
     title: "", product_name: "", wholesaler_id: wholesalers[0]?.id || "", wholesaler_name: wholesalers[0]?.name || "",
     total_quantity: 50, unit: "bags", unit_cost: 0, max_members: 5, created_by_name: "Shop Owner",
     status: "open", members: [{ name: "Shop Owner", quantity: 0, amount: 0, paid: false }], notes: "",
@@ -149,14 +197,20 @@ function BulkBuyForm({ wholesalers, onClose, onSaved }) {
     setSaving(true);
     const payload = {
       ...form, total_cost, member_count: memberCount, per_member_cost: Math.round(per_member_cost * 100) / 100,
-      per_member_quantity: Math.round(per_member_quantity * 100) / 100, order_date: new Date().toISOString().split("T")[0],
+      per_member_quantity: Math.round(per_member_quantity * 100) / 100,
+      order_date: edit?.order_date || new Date().toISOString().split("T")[0],
     };
     try {
-      await api.entities.BulkBuy.create(payload);
-      toast({ title: "Bulk buy created", description: "Other shop owners can now join." });
+      if (edit) {
+        await api.entities.BulkBuy.update(edit.id, payload);
+        toast({ title: "Bulk buy updated" });
+      } else {
+        await api.entities.BulkBuy.create(payload);
+        toast({ title: "Bulk buy created", description: "Other shop owners can now join." });
+      }
       onSaved();
     } catch (e) {
-      toast({ title: "Error", description: "Could not save", variant: "destructive" });
+      toast({ title: "Error", description: e.message || "Could not save", variant: "destructive" });
     }
     setSaving(false);
   };
@@ -164,7 +218,7 @@ function BulkBuyForm({ wholesalers, onClose, onSaved }) {
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>New Bulk Buy Order</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{edit ? "Edit Bulk Buy Order" : "New Bulk Buy Order"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div><Label>Title</Label><Input placeholder="e.g. Bulk Maize Meal - 50 bags" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
           <div><Label>Product</Label><Input value={form.product_name} onChange={e => setForm({ ...form, product_name: e.target.value })} /></div>
@@ -211,7 +265,7 @@ function BulkBuyForm({ wholesalers, onClose, onSaved }) {
 
           <div className="flex gap-2 pt-2">
             <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
-            <Button onClick={submit} disabled={saving} className="flex-1 bg-green-600 hover:bg-green-700">{saving ? "Saving..." : "Create Bulk Buy"}</Button>
+            <Button onClick={submit} disabled={saving} className="flex-1 bg-green-600 hover:bg-green-700">{saving ? "Saving..." : edit ? "Save Changes" : "Create Bulk Buy"}</Button>
           </div>
         </div>
       </DialogContent>

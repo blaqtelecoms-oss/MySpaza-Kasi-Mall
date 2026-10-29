@@ -79,8 +79,8 @@ export default function CardDisplay({ balance = 0, holderName = "Shop Owner", ca
           <div className="px-4 pb-3">
             <ul className="text-[10px] text-gray-300 grid grid-cols-2 gap-x-2 gap-y-0.5">
               <li>✓ Wholesaler discounts</li>
-              <li>✓ Stockfell savings</li>
-              <li>✓ Stokvel groups</li>
+              <li>✓ Stokvel savings</li>
+              <li>✓ Savings groups</li>
               <li>✓ Bulk buying</li>
             </ul>
           </div>

@@ -88,8 +88,11 @@ so provider retries cannot duplicate history.
 The sandbox public host changes whenever the environment is recreated. If
 verification emails or delivery events stop arriving, update the Supabase hook
 URI and the Resend webhook endpoint to
-`https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/...`. A real deployment must serve
-those two paths from `server/index.js` behind `https://myspaza-app.co.za/api/...`.
+`https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/...`.
+
+On the public site the same three paths are served at
+`https://myspaza-app.co.za/api/...` by `netlify/functions/api.mjs`, which runs the
+handlers from `server/` — see [Deploying](#deploying-to-myspaza-appcoza).
 
 ### Email log
 
@@ -104,6 +107,32 @@ update public.profiles set role = 'admin' where email = 'you@example.com';
 `server/lib/resend.js` exports `sendEmail({ to, subject, html, text })` if another
 app notification needs to go out; add a route in `server/index.js` and it reuses
 the same sender and secret handling.
+
+## Deploying to myspaza-app.co.za
+
+The public site is a static Netlify deploy: `npm run build` producing `dist/`.
+Two things a static host does not get from the Vite dev server are declared in
+the repo:
+
+- `public/_redirects` — `/api/*` goes to the `netlify/functions/api.mjs`
+  function (invitations, the Supabase Send-Email hook, the Resend webhook);
+  every other path serves `index.html` so deep links (`/inventory`),
+  password-reset links and invitation links (`/invite/<token>`) load the app
+  instead of a Netlify 404.
+- `netlify.toml` — build command, publish directory and functions directory.
+
+Set these on the Netlify site (Site configuration → Environment variables);
+they are never committed:
+
+| Variable | Used by |
+| --- | --- |
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | the browser bundle (inlined at build time, so set them before building) |
+| `RESEND_API_KEY` | the function: invitation and auth emails |
+| `RESEND_WEBHOOK_SECRET`, `SUPABASE_SEND_EMAIL_HOOK_SECRET` | the function: verifying its two signed callers |
+| `SUPABASE_SERVICE_ROLE_KEY` | the function: writing the email log |
+| `APP_URL` = `https://myspaza-app.co.za` | invitation links (defaults to the caller's origin) |
+
+The function bundles `server/lib` at deploy time and needs no extra dependency.
 
 ## Checks
 
@@ -160,8 +189,9 @@ npm run build
 Each shop owner can invite employees by email and decide exactly what each one
 may see and do (`/employees`, or **Employees** in the sidebar).
 
-1. **Invite** — the owner enters an email, picks a role and sets each module to
-   *None*, *View* or *Edit*. `POST /api/invitations` (served by `server/`)
+1. **Invite** — the owner enters the employee's name, email and monthly salary,
+   picks a role and sets each module to *None*, *View* or *Edit*.
+   `POST /api/invitations` (served by `server/`)
    verifies the owner's Supabase session, stores the invitation with a hashed
    token and emails the link with Resend. Links expire after 7 days, work once,
    and only for the invited address.
@@ -177,6 +207,56 @@ may see and do (`/employees`, or **Employees** in the sidebar).
 Module permissions are enforced by row level security
 (`supabase/migrations/20261028_shop_employees.sql`), not only by the menu, so a
 crafted API call cannot reach a module the owner did not grant.
+
+## Community groups (stokvel, savings groups, bulk buys)
+
+On **MySpaza Card** (`/myspaza-card`) the shop's savings account is its
+**stokvel**, alongside savings groups and bulk buy orders. Each one can invite
+friends by email:
+
+1. **Invite** — on a stokvel, savings group or bulk buy card the owner enters a
+   friend's email. `POST /api/group-invitations` verifies the owner's session,
+   checks the group belongs to their shop, stores a hashed token and emails the
+   link with Resend. Links work once, expire after 7 days and only for the
+   invited address.
+2. **Resend / cancel** — the pending invitations under each group can be resent
+   (a fresh link replaces the old one) or cancelled.
+3. **Accept** — `/invite/group/<token>` shows the group, shop and invited
+   address. After signing in with that address the friend accepts and is added
+   to the group's member list.
+
+The UI calls the account a stokvel; the table stays `stockfell_account` so no
+data moves (`supabase/migrations/20261031_group_invites_employee_pay.sql`).
+
+## Subscriptions & plans
+
+Each **shop has one plan**, set by the owner and shared with its employees
+(`public.shop_subscription`, migration `20261029_shop_subscriptions.sql`). New
+shops start on **Free**.
+
+| Plan | Price | Adds |
+| --- | --- | --- |
+| Free | R0 | Dashboard, Point of Sale, Inventory, Cash Up, Daily Sales, Expenses, Suppliers, Academy, Calculators, Funding Hub, MySpaza Card, Ads |
+| Premium | R199/month | Employees, Reports, Spaza Coach, Customers |
+| Ultra | R399/month | Everything, including Debtors Control, Accounting and Banking |
+
+- **Nothing is hidden.** Every page stays in the sidebar on every plan; opening
+  one above the shop's plan renders the upgrade overlay in place of the page
+  (`RequirePlan` → `UpgradeRequired`), with an **Upgrade Now** button that opens
+  the checkout, or **Compare plans** that lands on Settings → Billing.
+- **Billing & Subscription** is a tab in Settings (`/settings?tab=billing`):
+  the current plan, the three plan cards and a change button on each.
+- **Checkout is simulated**: a modal with the plan details, a fixed test card and
+  a Pay button. No card details are collected and no charge is made. Upgrading
+  applies immediately and shows a success toast.
+- **Downgrades are scheduled, not instant**: the current plan stays in force for
+  the rest of the paid period (`pending_plan` +
+  `pending_plan_effective_at`) and the lower tier takes over at period end.
+- The matrix lives in two places that must agree: `src/lib/plans.js` for the
+  menu/cards, and `shop_plan_level()` in the migration for Postgres. The
+  database is what actually enforces it — every table policy now requires the
+  plan to cover the module as well as the employee permission, so a Free shop
+  cannot read Ultra data through a crafted API call.
 
 ## Data ownership
 

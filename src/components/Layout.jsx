@@ -12,6 +12,7 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useAuth } from "@/lib/AuthContext";
 import { queryClientInstance } from "@/lib/query-client";
 import OfflineBanner from "@/components/OfflineBanner";
+import ShopSwitcher from "@/components/shop/ShopSwitcher";
 
 // `module` is an employee permission key (see src/lib/modules.js): a shop owner
 // sees everything, an employee only the modules the owner granted. `ownerOnly`
@@ -149,6 +150,9 @@ export default function Layout() {
           </div>
         </div>
 
+        {/* Which shop the owner is working in (branches live under Settings → Shops) */}
+        <ShopSwitcher />
+
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-2 select-none">
           {visibleNavItems.map((item) => {
@@ -160,14 +164,14 @@ export default function Layout() {
                 key={item.path}
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-3 rounded-lg mb-1 transition-all ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 transition-all ${
                   isActive
                     ? "bg-[#FFD426] text-[#0D0D0D] font-semibold shadow-md"
                     : "text-white/70 hover:bg-white/10"
                 }`}
               >
-                <Icon size={18} />
-                <span className="text-sm">{item.label}</span>
+                <Icon size={18} strokeWidth={1.9} className="shrink-0" />
+                <span className="text-sm truncate">{item.label}</span>
               </Link>
             );
           })}

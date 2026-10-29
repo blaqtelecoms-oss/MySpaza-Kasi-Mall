@@ -28,6 +28,8 @@ See `README.md` for local setup, environment variables and the Supabase schema.
 - `supabase/migrations/`: SQL policies applied to the Supabase project.
 - `docker-compose.base44.yml`: sandbox runtime (file name is required by the
   platform; the app itself has no Base44 dependency).
+- `netlify.toml`, `public/_redirects`, `netlify/functions/api.mjs`: the public
+  deployment at `myspaza-app.co.za` (see below).
 
 ## Working Notes
 
@@ -96,6 +98,11 @@ re-run it after a schema change.
   the Supabase access token, takes the shop from **the caller**, stores only a
   SHA-256 token hash in `shop_invite` (7-day expiry, one open invite per email)
   and emails the link with Resend. `APP_URL` sets the link base.
+- Employee details: the invitation carries the employee's **name** and
+  **monthly salary** (`shop_invite.full_name` / `monthly_salary`), captured in
+  the invite dialog and editable on the Employees page. `accept_shop_invite()`
+  copies both onto the membership (`shop_member`), so an accepted employee
+  keeps them; `api.shop.updateMember` is the only other writer.
 - Acceptance: `/invite/<token>` reads `shop_invite_preview()` (safe signed out)
   and calls `accept_shop_invite()`, which requires the signed-in address to match
   the invited one and refuses a second shop. Sign-in/registration honour
@@ -110,6 +117,115 @@ re-run it after a schema change.
 - Device caches (`src/lib/userDataReset.js`) are wiped whenever the signed-in
   identity changes, so an offline cache or queued write can never leak between
   accounts on a shared browser.
+
+## Community groups (stokvel, savings groups, bulk buys)
+
+`supabase/migrations/20261031_group_invites_employee_pay.sql` adds the model.
+The UI calls the shop's savings account a **stokvel**; the table and entity are
+still `stockfell_account` / `StockfellAccount`, so nothing migrates.
+
+- A group is one row the shop owns: the stokvel account (`stockfell_account`),
+  a `savings_group` or a `bulk_buy`. Members live in each row's `members` jsonb
+  array; `stockfell_account.members` was added for this.
+- Invitations mirror employees: the owner's browser POSTs
+  `/api/group-invitations` with `{ email, groupKind, groupId, shopId }`.
+  `server/lib/group-invite.js` verifies the Supabase session, resolves the shop
+  through `server/lib/invite-core.js` (shared with the employee invite), checks
+  the group belongs to that shop, stores a SHA-256 token hash in `group_invite`
+  and emails the link with Resend. `groupKind` is one of `stokvel`,
+  `savings_group`, `bulk_buy`.
+- Re-inviting is the **Resend** action: it deletes the open row for that
+  address and group (the unique index allows one) and sends a fresh token.
+- Acceptance: `/invite/group/<token>` reads `group_invite_preview()` (safe
+  signed out) and calls `accept_group_invite()`, which checks the signed-in
+  address and appends the member to the group's `members` array without
+  duplicating an existing email. `?next=` works the same as employee invites.
+- Pending invitations are read from `group_invite` through the entity layer
+  (`GroupInvite`), scoped by the owner policy `public.is_shop_owner(shop_id)` so
+  branches work too.
+- Adding an endpoint means three edits: `server/index.js` routes,
+  `netlify/functions/api.mjs` routes (the public site), and the client call.
+
+## Subscriptions (plans + feature gating)
+
+`supabase/migrations/20261029_shop_subscriptions.sql` adds the plan model; the
+client matrix is `src/lib/plans.js`.
+
+- **The plan belongs to the shop**, not the user: `public.shop_subscription` is
+  keyed by `shop_id` (the owner's auth uid), so employees work under the owner's
+  plan. A missing row means Free — that is the default, never write one on load.
+- Two copies of the matrix must stay in step: `FEATURES` in `src/lib/plans.js`
+  and the arrays inside `public.shop_plan_level()`. Feature keys are module keys
+  (`pos`, `inventory`, … `debtors`, `accounting`, `banking`), which is what lets
+  `RequirePlan feature="…"` line up with the route.
+- Enforcement is in Postgres: `shop_plan_level(shop, modules)` is checked by
+  every app table policy *and* inside `shop_module_level()`, so the plan and the
+  employee's module grant both have to allow a row. The menu and paywall only
+  mirror it.
+- **Never hide navigation for plan reasons.** The sidebar filters on admin,
+  owner and employee module grants only; a page above the plan must stay
+  clickable and render `<UpgradeRequired>` via `RequirePlan` — that is the
+  paywall, and it is why `RequirePlan` sits *inside* `RequireOwner`/`RequireModule`
+  in `App.jsx`.
+- `set_shop_plan(p_plan)` is the only writer, it refuses employees, and it
+  decides the timing itself: an upgrade applies now with a fresh month; a
+  downgrade is stored in `pending_plan` and takes over at
+  `pending_plan_effective_at`. `shop_effective_plan()` resolves which one is live,
+  and the client mirrors that rule in `resolvePlan()` — change both together.
+- Checkout (`src/components/billing/CheckoutDialog.jsx`) is simulated on purpose:
+  a fixed test card, no charge, no card input. Keep it that way until a real
+  payment provider is wired in.
+- Verify the matrix without a browser by running the helpers inside a rolled-back
+  transaction as an employee: `set_config('request.jwt.claims', '{"sub":"<uuid>"}', true)`
+  (the sub must be a real uuid — `auth.uid()` casts it), then call
+  `shop_module_level` at each tier.
+
+## Shops and branches
+
+`supabase/migrations/20261030_shop_branches.sql` adds the shop record and the
+plan's shop allowance.
+
+- **A shop is a trading location, not the account.** The primary shop keeps the
+  historic id — the owner's auth uid — so every existing row (`created_by_id`)
+  stays put. A branch is a `public.shop` row with a generated id, and its records
+  are simply the rows whose `created_by_id` is that branch id.
+- `public.shop_owner_id(shop)` resolves an account: the `shop` row's `owner_id`,
+  falling back to the id itself (which is what makes a not-yet-created primary
+  shop work). `public.is_shop_owner()` is the predicate every app-table policy now
+  uses — the owner sees every branch, an employee still needs
+  `shop_module_level`. Never go back to `created_by_id = auth.uid()`, or branches
+  become invisible.
+- Because RLS now hands the owner *all* their branches, the client must scope
+  reads itself: `SHOP_SCOPED` in `src/api/client.js` adds
+  `created_by_id = <active shop>` to list/filter/get/update/delete/updateMany/
+  deleteMany. Add a new shop table there or its branches will blend together.
+- Shop allowance: Free 1, Premium 2, Ultra unlimited. Both copies must move
+  together — `SHOP_LIMITS` in `src/lib/plans.js` (UI) and `public.shop_limit()`
+  (enforcement inside `public.create_shop()`). `null` means unlimited, so never
+  resolve it with `??` (that turns Ultra into 1).
+- Writes go through security-definer RPCs, never direct table writes:
+  `ensure_shop()` (creates the primary row, named after the saved business name),
+  `create_shop(name, address)` (counts the owner's shops and refuses past the
+  limit), `rename_shop(id, name)` (also updates the branch's `shop_settings`
+  business name). `my_shops()` and `shop_billing(shop)` are the reads the context
+  uses; `shop_billing` resolves the plan through the owner, so a branch runs on
+  the owner's subscription.
+- Each branch has its own `shop_settings` row; `create_shop()` copies the primary
+  shop's business/receipt blob (with the new name) so receipts print immediately.
+- The active branch lives in `localStorage` per account
+  (`myspaza:active-shop:<user id>`) and in `shopIdCache`; `AuthContext.switchShop`
+  clears the React Query cache before reloading the shop context, because cached
+  entity queries are keyed per entity, not per shop.
+- Employee invitations follow the branch: `api.shop.invite` posts the active
+  `shopId` and `server/lib/shop-invite.js` only accepts it when the `shop` row
+  names the caller as owner.
+- Ads: only Free sees them. `AdBanner` and `AcademyPromoBanner` return `null` when
+  `planInfo.ads` is false (`planHasAds()` in `plans.js`).
+- Verify with a throwaway auth user (service role), sign in through the login form
+  (email + password), then: add branches up to the plan limit and confirm
+  `create_shop` refuses one more, switch branches and confirm a product created in
+  one branch is absent in the other, and delete the user plus its `shop` /
+  `shop_settings` / `shop_subscription` / data rows afterwards.
 
 ## Sandbox runtime (`docker-compose.base44.yml`)
 
@@ -138,6 +254,27 @@ re-run it after a schema change.
 - Webhooks are called by third parties, so they target the api service's own
   port host, `https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/...`, not the Vite
   dev server.
+
+## Public deployment (Netlify, https://myspaza-app.co.za)
+
+The public site is a static build of `dist/`, not the dev server, so anything the
+preview supplies has to exist there explicitly:
+
+- `public/_redirects` holds the SPA fallback (`/* /index.html 200`) and routes
+  `/api/*` to `netlify/functions/api.mjs`. Without the fallback every path but
+  `/` is a Netlify 404 — deep links, password-reset links and invitation links
+  all break, while the preview keeps working because Vite does this itself.
+  It lives in `public/` (not only in `netlify.toml`) so it also travels into a
+  drag-and-drop `dist/` deploy.
+- `netlify/functions/api.mjs` is a thin adapter over the same handlers the
+  sandbox email service runs (`server/lib/*`): it maps the rewritten
+  `/.netlify/functions/api/<path>` back to `/api/<path>` and passes the raw body
+  and headers through. When adding an endpoint to `server/index.js`, add the
+  same path to its `routes` map, or the public site 404s where the preview works.
+- The function needs its secrets as Netlify environment variables
+  (`RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `SUPABASE_SEND_EMAIL_HOOK_SECRET`,
+  `SUPABASE_SERVICE_ROLE_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
+  `APP_URL`). `VITE_*` are also inlined into the browser bundle at build time.
 
 ## Supabase auth settings (project-level, not in this repo)
 

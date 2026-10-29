@@ -7,6 +7,7 @@
 // level security decides what each user can see.
 import { supabase } from "@/api/supabase";
 import { installOfflineLayer } from "@/lib/offlineLayer";
+import { planStatus, resolvePlan, shopLimit } from "@/lib/plans";
 
 /** Entity name → Postgres table. */
 const TABLES = {
@@ -16,6 +17,7 @@ const TABLES = {
   Customer: "customer",
   EmailEvent: "email_event",
   Expense: "expense",
+  GroupInvite: "group_invite",
   Product: "product",
   PurchaseOrder: "purchase_order",
   Sale: "sale",
@@ -123,12 +125,40 @@ async function currentUserId() {
   return session?.user?.id ?? null;
 }
 
-// A shop is the owner's account: rows an employee writes belong to the shop
-// they work in, not to the employee's own account. Cached per signed-in user so
-// every write does not re-read the membership.
+// Tables whose rows belong to one shop. `created_by_id` is the shop id, so a
+// read is always narrowed to the branch the account is working in — the owner
+// may run several, and the database then lets them see all of them.
+const SHOP_SCOPED = new Set([
+  "bank_account", "bulk_buy", "cash_up", "customer", "expense", "product",
+  "purchase_order", "sale", "savings_group", "shop_settings", "stock_adjustment",
+  "stockfell_account", "supplier", "wholesaler", "wholesaler_discount",
+]);
+
+// A shop is the owner's account (or one of its branches): rows an employee
+// writes belong to the shop they work in, not to the employee's own account.
+// Cached per signed-in user so every write does not re-read the membership.
 let shopIdCache = { userId: null, shopId: null };
 
-/** The shop whose data the signed-in user works in (their own, or employer's). */
+const ACTIVE_SHOP_KEY = (userId) => `myspaza:active-shop:${userId}`;
+
+function readActiveShop(userId) {
+  try {
+    return window.localStorage.getItem(ACTIVE_SHOP_KEY(userId));
+  } catch {
+    return null;
+  }
+}
+
+function writeActiveShop(userId, shopId) {
+  try {
+    if (shopId) window.localStorage.setItem(ACTIVE_SHOP_KEY(userId), shopId);
+    else window.localStorage.removeItem(ACTIVE_SHOP_KEY(userId));
+  } catch {
+    /* private mode or storage disabled: the in-memory cache still works */
+  }
+}
+
+/** The shop whose data the signed-in user works in (a branch, or employer's). */
 async function currentShopId() {
   const userId = await currentUserId();
   if (!userId) return null;
@@ -140,7 +170,22 @@ async function currentShopId() {
     .eq("member_id", userId)
     .maybeSingle();
 
-  const shopId = data?.status === "active" ? data.shop_id : userId;
+  let shopId = data?.status === "active" ? data.shop_id : null;
+
+  if (!shopId) {
+    // An owner may run more than one shop; the branch they picked last wins.
+    const stored = readActiveShop(userId);
+    if (stored && stored !== userId) {
+      const { data: branch } = await supabase
+        .from("shop")
+        .select("id, owner_id")
+        .eq("id", stored)
+        .maybeSingle();
+      shopId = branch?.owner_id === userId ? branch.id : null;
+    }
+  }
+
+  shopId = shopId || userId;
   shopIdCache = { userId, shopId };
   return shopId;
 }
@@ -169,16 +214,30 @@ function stripUndefined(record) {
 
 function makeEntity(entity) {
   const name = table(entity);
+  const scoped = SHOP_SCOPED.has(name);
+
+  // Reads and writes stay inside the branch the account is working in, even
+  // though the owner's policies cover every branch they own.
+  const shopCriteria = async () => {
+    if (!scoped) return {};
+    const shopId = await currentShopId();
+    return shopId ? { created_by_id: shopId } : {};
+  };
 
   return {
     table: name,
 
-    list(sort, limit) {
-      return ordered(() => supabase.from(name).select("*"), null, sort, limit);
+    async list(sort, limit) {
+      return ordered(() => supabase.from(name).select("*"), await shopCriteria(), sort, limit);
     },
 
-    filter(criteria, sort, limit) {
-      return ordered(() => supabase.from(name).select("*"), criteria, sort, limit);
+    async filter(criteria, sort, limit) {
+      return ordered(
+        () => supabase.from(name).select("*"),
+        { ...(criteria || {}), ...(await shopCriteria()) },
+        sort,
+        limit
+      );
     },
 
     async get(id) {
@@ -186,6 +245,7 @@ function makeEntity(entity) {
         .from(name)
         .select("*")
         .eq("id", id)
+        .match(await shopCriteria())
         .maybeSingle();
       if (isMissingColumn(error)) throw new Error(error.message);
       if (error) return unwrap({ data, error });
@@ -205,12 +265,12 @@ function makeEntity(entity) {
       const { id: _ignored, created_date: _created, ...changes } = payload;
       const row = { ...stripUndefined(changes), updated_date: new Date().toISOString() };
       return unwrap(
-        await supabase.from(name).update(row).eq("id", id).select().single()
+        await supabase.from(name).update(row).eq("id", id).match(await shopCriteria()).select().single()
       );
     },
 
     async delete(id) {
-      unwrap(await supabase.from(name).delete().eq("id", id));
+      unwrap(await supabase.from(name).delete().eq("id", id).match(await shopCriteria()));
       return { id };
     },
 
@@ -232,6 +292,7 @@ function makeEntity(entity) {
 
     async bulkUpdate(entries = []) {
       const updated = [];
+      const scope = await shopCriteria();
       for (const entry of entries) {
         const { id, ...changes } = entry;
         if (!id) continue;
@@ -241,6 +302,7 @@ function makeEntity(entity) {
               .from(name)
               .update({ ...stripUndefined(changes), updated_date: new Date().toISOString() })
               .eq("id", id)
+              .match(scope)
               .select()
               .single()
           )
@@ -251,13 +313,19 @@ function makeEntity(entity) {
 
     async updateMany(criteria, changes = {}) {
       const patch = { ...(changes.$set || changes), updated_date: new Date().toISOString() };
-      const query = applyFilters(supabase.from(name).update(patch), criteria);
+      const query = applyFilters(supabase.from(name).update(patch), {
+        ...(criteria || {}),
+        ...(await shopCriteria()),
+      });
       unwrap(await query);
       return { ok: true };
     },
 
     async deleteMany(criteria) {
-      const query = applyFilters(supabase.from(name).delete(), criteria);
+      const query = applyFilters(supabase.from(name).delete(), {
+        ...(criteria || {}),
+        ...(await shopCriteria()),
+      });
       unwrap(await query);
       return { ok: true };
     },
@@ -487,15 +555,31 @@ const shop = {
       .maybeSingle();
 
     const active = membership?.status === "active" ? membership : null;
-    const shopId = active?.shop_id || userId;
 
-    let shopName = null;
-    const { data: settings } = await supabase
-      .from("shop_settings")
-      .select("business")
-      .eq("created_by_id", shopId)
-      .maybeSingle();
-    shopName = settings?.business?.name?.trim() || null;
+    // An owner runs a list of shops; the first visit creates the primary row
+    // (named after the business details already saved).
+    let shops = [];
+    if (!active) {
+      const { data, error } = await supabase.rpc("my_shops");
+      if (!error && Array.isArray(data)) shops = data;
+      if (!error && shops.length === 0) {
+        const { data: created } = await supabase.rpc("ensure_shop");
+        if (created) shops = [created];
+      }
+    }
+
+    const shopId = active?.shop_id || (await currentShopId());
+    const shopRow = shops.find((row) => row.id === shopId) || null;
+
+    let shopName = shopRow?.name?.trim() || null;
+    if (!shopName) {
+      const { data: settings } = await supabase
+        .from("shop_settings")
+        .select("business")
+        .eq("created_by_id", shopId)
+        .maybeSingle();
+      shopName = settings?.business?.name?.trim() || null;
+    }
 
     if (!shopName) {
       const { data: profile } = await supabase
@@ -506,21 +590,104 @@ const shop = {
       shopName = profile?.full_name || profile?.email || null;
     }
 
+    // The plan belongs to the owner, so every branch resolves the same one.
+    // `shop_billing` handles that lookup (and works for employees too).
+    let billing = null;
+    const { data: billingRow } = await supabase.rpc("shop_billing", { p_shop: shopId });
+    billing = billingRow || null;
+
+    if (!billing) {
+      // An as-yet unmigrated project: fall back to the subscription row.
+      const { data: subscription } = await supabase
+        .from("shop_subscription")
+        .select("plan,pending_plan,pending_plan_effective_at,current_period_end")
+        .eq("shop_id", shopRow?.owner_id || shopId)
+        .maybeSingle();
+      billing = subscription
+        ? {
+            plan: resolvePlan(subscription),
+            pending_plan: subscription.pending_plan,
+            pending_plan_effective_at: subscription.pending_plan_effective_at,
+            current_period_end: subscription.current_period_end,
+          }
+        : null;
+    }
+
+    const plan = billing?.plan || "free";
+    const limit = shopLimit(plan);
+
     return {
       shopId,
       shopName,
+      shops: shops.map((row) => ({
+        id: row.id,
+        name: row.name,
+        address: row.address || null,
+        isPrimary: Boolean(row.is_primary),
+      })),
+      shopLimit: limit,
+      canAddShop: !active && (limit === null || shops.length < limit),
       isOwner: !active,
       role: active?.role || "Owner",
       permissions: active?.permissions || {},
       memberId: active?.member_id || null,
       memberEmail: active?.member_email || null,
+      plan,
+      storedPlan: billing?.stored_plan || plan,
+      pendingPlan: billing?.pending_plan || null,
+      pendingPlanEffectiveAt: billing?.pending_plan_effective_at || null,
+      periodStart: billing?.period_start || null,
+      currentPeriodEnd: billing?.current_period_end || null,
+      graceEndsAt: billing?.grace_ends_at || null,
+      lastPaymentAt: billing?.last_payment_at || null,
+      paymentStatus: billing?.payment_status || planStatus(billing),
     };
   },
 
+  /** Owner: add a shop or branch, within the plan's limit (enforced in SQL). */
+  async create({ name, address } = {}) {
+    const { data, error } = await supabase.rpc("create_shop", {
+      p_name: name,
+      p_address: address || null,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Owner: rename a shop or branch. */
+  async rename(shopId, name) {
+    const { data, error } = await supabase.rpc("rename_shop", { p_id: shopId, p_name: name });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Work in another of the owner's shops. */
+  async switchTo(shopId) {
+    const userId = await currentUserId();
+    if (!userId) throw new Error("Sign in to switch shops.");
+    writeActiveShop(userId, shopId);
+    shopIdCache = { userId, shopId };
+    return shopId;
+  },
+
+  /**
+   * Owner: schedule a move to Free. Paid plans are never switched on from the
+   * browser — a Yoco payment has to be confirmed first (see `billing`). The
+   * database decides the timing (public.set_shop_plan).
+   */
+  async setPlan(planKey) {
+    const { data, error } = await supabase.rpc("set_shop_plan", { p_plan: planKey });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
   /** Ask the email service to create the invitation and send it with Resend. */
-  async invite({ email, role, permissions }) {
+  async invite({ email, fullName, monthlySalary, role, permissions }) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) throw new Error("Sign in to invite employees.");
+
+    // The employee joins the branch the owner is working in.
+    const shopId = await currentShopId();
 
     const response = await fetch("/api/invitations", {
       method: "POST",
@@ -528,7 +695,7 @@ const shop = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ email, role, permissions }),
+      body: JSON.stringify({ email, fullName, monthlySalary, role, permissions, shopId }),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || `Invitation failed (${response.status})`);
@@ -550,11 +717,17 @@ const shop = {
     return data;
   },
 
-  /** Owner: change an employee's role or modules. */
-  async updateMember(memberId, { role, permissions }) {
+  /** Owner: change an employee's details, role or modules. */
+  async updateMember(memberId, { role, permissions, full_name, monthly_salary }) {
     const { data, error } = await supabase
       .from("shop_member")
-      .update({ role, permissions, updated_date: new Date().toISOString() })
+      .update({
+        ...(full_name === undefined ? {} : { full_name }),
+        ...(monthly_salary === undefined ? {} : { monthly_salary }),
+        role,
+        permissions,
+        updated_date: new Date().toISOString(),
+      })
       .eq("id", memberId)
       .select()
       .single();
@@ -570,7 +743,114 @@ const shop = {
   },
 };
 
-export const api = { entities, auth, integrations, shop };
+/**
+ * Paid subscriptions. The browser asks the API service for a Yoco hosted
+ * checkout (the secret key stays on the server) and reads the payment row while
+ * Yoco's signed webhook settles it. A plan is never activated from here.
+ */
+const billing = {
+  /** Owner: open Yoco's hosted payment page for Premium or Ultra. */
+  async startCheckout(planKey) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Sign in to pay for a plan.");
+
+    const shopId = await currentShopId();
+    const response = await fetch("/api/billing/checkout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ plan: planKey, shopId }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Payment could not start (${response.status})`);
+    return body;
+  },
+
+  /** One payment attempt, polled after the owner returns from Yoco. */
+  async payment(id) {
+    if (!id) return null;
+    const { data, error } = await supabase
+      .from("subscription_payment")
+      .select("id,plan,amount_cents,currency,status,paid_at,created_date,failure_reason")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ?? null;
+  },
+
+  /**
+   * Recent attempts for this shop owner. Row level security returns rows only
+   * to the owner, so an employee simply sees an empty history.
+   */
+  async payments(limit = 6) {
+    const { data, error } = await supabase
+      .from("subscription_payment")
+      .select("id,plan,amount_cents,currency,status,paid_at,created_date,failure_reason")
+      .order("created_date", { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+};
+
+/**
+ * Community groups — the stokvel, savings groups and bulk buys on the MySpaza
+ * Card. An invitation names one group in the branch the owner is working in;
+ * the email service creates it and Resend delivers the link. Accepting is a
+ * database function, so the invited address is checked before the member joins.
+ */
+const groups = {
+  async invite({ email, groupKind, groupId }) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Sign in to invite people to your group.");
+
+    const shopId = await currentShopId();
+    const response = await fetch("/api/group-invitations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ email, groupKind, groupId, shopId }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Invitation failed (${response.status})`);
+    return body;
+  },
+
+  /** Group, shop and address behind an invitation link (works signed out). */
+  async invitePreview(token) {
+    const { data, error } = await supabase.rpc("group_invite_preview", { p_token: token });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Accept the invitation for the signed-in account. */
+  async acceptInvite(token) {
+    const { data, error } = await supabase.rpc("accept_group_invite", { p_token: token });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /**
+   * Owner: remove a group and its open invitations in one transaction, so no
+   * invitation link keeps pointing at a deleted group.
+   */
+  async remove(groupKind, groupId) {
+    const { data, error } = await supabase.rpc("delete_community_group", {
+      p_kind: groupKind,
+      p_id: groupId,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+};
+
+export const api = { entities, auth, integrations, shop, groups, billing };
 
 // Transparent offline caching + write queueing over the entity layer.
 installOfflineLayer(api);

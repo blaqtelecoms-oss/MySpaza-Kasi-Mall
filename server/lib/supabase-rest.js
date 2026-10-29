@@ -57,6 +57,45 @@ export async function deleteRows(table, query) {
   }
 }
 
+/** Update rows matching a PostgREST query string. */
+export async function updateRows(table, query, patch) {
+  if (!supabaseRestConfigured()) {
+    throw new Error("Supabase is not configured on the email service");
+  }
+  const response = await fetch(`${baseUrl}/rest/v1/${table}?${query}`, {
+    method: "PATCH",
+    headers: serviceHeaders({ Prefer: "return=minimal" }),
+    body: JSON.stringify(patch),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Supabase update of ${table} failed (${response.status}): ${detail.slice(0, 300)}`
+    );
+  }
+}
+
+/**
+ * Call a Postgres function with the service role. Used by payment settlement,
+ * which is deliberately not executable by a signed-in browser session.
+ */
+export async function callRpc(name, args = {}) {
+  if (!supabaseRestConfigured()) {
+    throw new Error("Supabase is not configured on the email service");
+  }
+  const response = await fetch(`${baseUrl}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: serviceHeaders(),
+    body: JSON.stringify(args),
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    const detail = body?.message || body?.error || `HTTP ${response.status}`;
+    throw new Error(`${name} failed: ${detail}`);
+  }
+  return body;
+}
+
 /**
  * Insert one row. `onConflict` names the unique column; with duplicate
  * resolution enabled a retried webhook is accepted without a second row.

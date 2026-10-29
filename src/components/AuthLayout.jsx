@@ -1,5 +1,5 @@
 import React from "react";
-import { BarChart3, Boxes, ShieldCheck, Wallet } from "lucide-react";
+import { BarChart3, Boxes, Wallet } from "lucide-react";
 
 const HIGHLIGHTS = [
   {
@@ -28,7 +28,7 @@ export default function AuthLayout({ title, subtitle, footer, children }) {
           src="/brand/auth-bg.jpg"
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-[0.85] [filter:grayscale(0.45)_saturate(0.9)]"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-40 [filter:grayscale(0.45)_saturate(0.9)]"
         />
         <div
           aria-hidden="true"
@@ -79,10 +79,6 @@ export default function AuthLayout({ title, subtitle, footer, children }) {
           ))}
         </ul>
 
-        <p className="relative mt-12 flex items-center gap-2 text-xs font-medium text-slate-500">
-          <ShieldCheck className="h-4 w-4 text-teal-600" aria-hidden="true" />
-          Every account sees only its own shop data.
-        </p>
       </aside>
 
       <main className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-8">

@@ -27,6 +27,16 @@
       "name": "SUPABASE_SEND_EMAIL_HOOK_SECRET",
       "description": "Secret generated when the Supabase Send Email auth hook is enabled (Auth -> Hooks, format v1,whsec_...). Verifies Supabase's hook requests to /api/hooks/supabase/send-email.",
       "requiredAtBoot": false
+    },
+    {
+      "name": "YOCO_SECRET_KEY",
+      "description": "Yoco Checkout API secret key (Yoco dashboard -> Developers -> API keys). Creates the hosted checkout for Premium and Ultra subscriptions; server-side only.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "YOCO_WEBHOOK_SECRET",
+      "description": "Signing secret of the Yoco webhook pointed at /api/webhooks/yoco (Yoco dashboard -> Developers -> Webhooks, whsec_...). Verifies the payment notification that activates a subscription.",
+      "requiredAtBoot": false
     }
   ]
 }

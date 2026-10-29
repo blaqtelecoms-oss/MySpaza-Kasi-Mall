@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/api/client";
 import { DEFAULT_ROLE, ROLE_PRESETS, cleanPermissions } from "@/lib/modules";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MobileSelect } from "@/components/ui/mobile-select";
@@ -11,6 +12,8 @@ import PermissionEditor from "@/components/employees/PermissionEditor";
 
 /** Owner edits an existing employee's role and module access. */
 export default function EditEmployeeDialog({ member, open, onOpenChange, onSaved }) {
+  const [fullName, setFullName] = useState("");
+  const [monthlySalary, setMonthlySalary] = useState("");
   const [role, setRole] = useState(DEFAULT_ROLE.role);
   const [permissions, setPermissions] = useState({});
   const [saving, setSaving] = useState(false);
@@ -18,6 +21,8 @@ export default function EditEmployeeDialog({ member, open, onOpenChange, onSaved
 
   useEffect(() => {
     if (!member) return;
+    setFullName(member.full_name || "");
+    setMonthlySalary(member.monthly_salary === null || member.monthly_salary === undefined ? "" : String(member.monthly_salary));
     setRole(member.role || DEFAULT_ROLE.role);
     setPermissions({ ...(member.permissions || {}) });
   }, [member]);
@@ -29,9 +34,21 @@ export default function EditEmployeeDialog({ member, open, onOpenChange, onSaved
 
   const handleSave = async () => {
     if (!member) return;
+    const name = fullName.trim();
+    if (!name) {
+      toast({ title: "Enter the employee's name", variant: "destructive" });
+      return;
+    }
+    const salary = monthlySalary.trim() === "" ? null : Number(monthlySalary);
+    if (salary !== null && (!Number.isFinite(salary) || salary < 0)) {
+      toast({ title: "Enter the monthly salary in rand", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       await api.shop.updateMember(member.id, {
+        full_name: name,
+        monthly_salary: salary,
         role,
         permissions: cleanPermissions(permissions),
       });
@@ -56,6 +73,30 @@ export default function EditEmployeeDialog({ member, open, onOpenChange, onSaved
           <div>
             <Label>Employee</Label>
             <p className="mt-1 truncate text-sm font-medium text-foreground">{member?.member_email}</p>
+          </div>
+
+          <div>
+            <Label>Employee name</Label>
+            <Input
+              className="mt-1"
+              placeholder="e.g. Thandi Nkosi"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <Label>Monthly salary (R)</Label>
+            <Input
+              className="mt-1"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              placeholder="e.g. 4500"
+              value={monthlySalary}
+              onChange={(e) => setMonthlySalary(e.target.value)}
+            />
           </div>
 
           <div>
