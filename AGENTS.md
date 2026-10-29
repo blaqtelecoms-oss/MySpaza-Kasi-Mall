@@ -113,6 +113,40 @@ re-run it after a schema change.
   identity changes, so an offline cache or queued write can never leak between
   accounts on a shared browser.
 
+## Subscriptions (plans + feature gating)
+
+`supabase/migrations/20261029_shop_subscriptions.sql` adds the plan model; the
+client matrix is `src/lib/plans.js`.
+
+- **The plan belongs to the shop**, not the user: `public.shop_subscription` is
+  keyed by `shop_id` (the owner's auth uid), so employees work under the owner's
+  plan. A missing row means Free — that is the default, never write one on load.
+- Two copies of the matrix must stay in step: `FEATURES` in `src/lib/plans.js`
+  and the arrays inside `public.shop_plan_level()`. Feature keys are module keys
+  (`pos`, `inventory`, … `debtors`, `accounting`, `banking`), which is what lets
+  `RequirePlan feature="…"` line up with the route.
+- Enforcement is in Postgres: `shop_plan_level(shop, modules)` is checked by
+  every app table policy *and* inside `shop_module_level()`, so the plan and the
+  employee's module grant both have to allow a row. The menu and paywall only
+  mirror it.
+- **Never hide navigation for plan reasons.** The sidebar filters on admin,
+  owner and employee module grants only; a page above the plan must stay
+  clickable and render `<UpgradeRequired>` via `RequirePlan` — that is the
+  paywall, and it is why `RequirePlan` sits *inside* `RequireOwner`/`RequireModule`
+  in `App.jsx`.
+- `set_shop_plan(p_plan)` is the only writer, it refuses employees, and it
+  decides the timing itself: an upgrade applies now with a fresh month; a
+  downgrade is stored in `pending_plan` and takes over at
+  `pending_plan_effective_at`. `shop_effective_plan()` resolves which one is live,
+  and the client mirrors that rule in `resolvePlan()` — change both together.
+- Checkout (`src/components/billing/CheckoutDialog.jsx`) is simulated on purpose:
+  a fixed test card, no charge, no card input. Keep it that way until a real
+  payment provider is wired in.
+- Verify the matrix without a browser by running the helpers inside a rolled-back
+  transaction as an employee: `set_config('request.jwt.claims', '{"sub":"<uuid>"}', true)`
+  (the sub must be a real uuid — `auth.uid()` casts it), then call
+  `shop_module_level` at each tier.
+
 ## Sandbox runtime (`docker-compose.base44.yml`)
 
 `docker compose -f docker-compose.base44.yml up -d` runs two services.

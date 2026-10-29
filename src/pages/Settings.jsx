@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { api } from "@/api/client";
+import BillingPanel from "@/components/billing/BillingPanel";
 import { DEFAULT_SHOP_SETTINGS, SHOP_LOGO_BUCKET, toShopSettings } from "@/lib/shopSettings";
 import { Settings, Bell, Shield, Globe, Palette, Building2, Printer, Save, Trash2, Loader2, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +48,13 @@ export default function SettingsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInput = useRef(null);
   const { toast } = useToast();
+  // The paywall's "Compare plans" opens this page at ?tab=billing.
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState(searchParams.get("tab") === "billing" ? "billing" : "business");
+
+  useEffect(() => {
+    if (searchParams.get("tab") === "billing") setTab("billing");
+  }, [searchParams]);
 
   // Load the shop's saved profile (one row per account, owned by the user).
   useEffect(() => {
@@ -128,12 +137,13 @@ export default function SettingsPage() {
         <p className="text-muted-foreground text-sm">Manage your shop settings</p>
       </div>
 
-      <Tabs defaultValue="business">
-        <TabsList className="grid grid-cols-4 w-full">
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="grid grid-cols-5 w-full">
           <TabsTrigger value="business" className="text-xs">Business</TabsTrigger>
           <TabsTrigger value="receipt" className="text-xs">Receipt</TabsTrigger>
           <TabsTrigger value="notifications" className="text-xs">Alerts</TabsTrigger>
           <TabsTrigger value="security" className="text-xs">Security</TabsTrigger>
+          <TabsTrigger value="billing" className="text-xs">Billing</TabsTrigger>
         </TabsList>
 
         {/* Business Info */}
@@ -352,6 +362,10 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        {/* Billing & Subscription */}
+        <TabsContent value="billing">
+          <BillingPanel />
         </TabsContent>
       </Tabs>
 

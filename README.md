@@ -207,6 +207,36 @@ Module permissions are enforced by row level security
 (`supabase/migrations/20261028_shop_employees.sql`), not only by the menu, so a
 crafted API call cannot reach a module the owner did not grant.
 
+## Subscriptions & plans
+
+Each **shop has one plan**, set by the owner and shared with its employees
+(`public.shop_subscription`, migration `20261029_shop_subscriptions.sql`). New
+shops start on **Free**.
+
+| Plan | Price | Adds |
+| --- | --- | --- |
+| Free | R0 | Dashboard, Point of Sale, Inventory, Cash Up, Daily Sales, Expenses, Suppliers, Academy, Calculators, Funding Hub, MySpaza Card, Ads |
+| Premium | R199/month | Employees, Reports, Spaza Coach, Customers |
+| Ultra | R399/month | Everything, including Debtors Control, Accounting and Banking |
+
+- **Nothing is hidden.** Every page stays in the sidebar on every plan; opening
+  one above the shop's plan renders the upgrade overlay in place of the page
+  (`RequirePlan` → `UpgradeRequired`), with an **Upgrade Now** button that opens
+  the checkout, or **Compare plans** that lands on Settings → Billing.
+- **Billing & Subscription** is a tab in Settings (`/settings?tab=billing`):
+  the current plan, the three plan cards and a change button on each.
+- **Checkout is simulated**: a modal with the plan details, a fixed test card and
+  a Pay button. No card details are collected and no charge is made. Upgrading
+  applies immediately and shows a success toast.
+- **Downgrades are scheduled, not instant**: the current plan stays in force for
+  the rest of the paid period (`pending_plan` +
+  `pending_plan_effective_at`) and the lower tier takes over at period end.
+- The matrix lives in two places that must agree: `src/lib/plans.js` for the
+  menu/cards, and `shop_plan_level()` in the migration for Postgres. The
+  database is what actually enforces it — every table policy now requires the
+  plan to cover the module as well as the employee permission, so a Free shop
+  cannot read Ultra data through a crafted API call.
+
 ## Data ownership
 
 Each account is isolated at the database level (see

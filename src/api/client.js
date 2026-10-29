@@ -7,6 +7,7 @@
 // level security decides what each user can see.
 import { supabase } from "@/api/supabase";
 import { installOfflineLayer } from "@/lib/offlineLayer";
+import { resolvePlan } from "@/lib/plans";
 
 /** Entity name → Postgres table. */
 const TABLES = {
@@ -506,6 +507,14 @@ const shop = {
       shopName = profile?.full_name || profile?.email || null;
     }
 
+    // The shop's subscription (one row per shop, readable by its owner and
+    // employees). A missing row — or an as-yet unmigrated project — is Free.
+    const { data: subscription } = await supabase
+      .from("shop_subscription")
+      .select("plan,pending_plan,pending_plan_effective_at,current_period_end")
+      .eq("shop_id", shopId)
+      .maybeSingle();
+
     return {
       shopId,
       shopName,
@@ -514,7 +523,22 @@ const shop = {
       permissions: active?.permissions || {},
       memberId: active?.member_id || null,
       memberEmail: active?.member_email || null,
+      plan: resolvePlan(subscription),
+      pendingPlan: subscription?.pending_plan || null,
+      pendingPlanEffectiveAt: subscription?.pending_plan_effective_at || null,
+      currentPeriodEnd: subscription?.current_period_end || null,
     };
+  },
+
+  /**
+   * Owner: change the shop's plan. An upgrade applies immediately; a downgrade
+   * is stored and takes over at the end of the paid period. The database
+   * decides both (public.set_shop_plan), so the browser cannot skip the rules.
+   */
+  async setPlan(planKey) {
+    const { data, error } = await supabase.rpc("set_shop_plan", { p_plan: planKey });
+    if (error) throw new Error(error.message);
+    return data;
   },
 
   /** Ask the email service to create the invitation and send it with Resend. */
