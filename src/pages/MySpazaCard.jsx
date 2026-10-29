@@ -24,7 +24,7 @@ export default function MySpazaCard() {
   const bulkQuery = useEntityQuery("BulkBuy", "list", []);
   const stockfell = stockfellQuery.data || [];
   const stats = {
-    savings: (stockfell[0] && stockfell[0].balance) || 0,
+    savings: stockfell.reduce((sum, row) => sum + Number(row.balance || 0), 0),
     discounts: (discountsQuery.data || []).filter(x => x.is_active).length,
     groups: (groupsQuery.data || []).length,
     bulk: (bulkQuery.data || []).filter(x => x.status === "open").length,

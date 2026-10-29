@@ -4,37 +4,46 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useSubscription } from "@/lib/SubscriptionContext";
-import { PLAN_BY_KEY, planRank } from "@/lib/plans";
+import { GRACE_DAYS, PERIOD_DAYS, PLAN_BY_KEY } from "@/lib/plans";
 
 /**
- * Simulated checkout. Nothing is charged and no card details are entered — the
- * card row is a fixed test placeholder — so this stays clearly a demo of the
- * billing flow.
+ * Plan checkout. A paid plan is bought on Yoco's hosted payment page: this
+ * dialog only asks the API service for the payment page, and the plan switches
+ * on once Yoco's signed webhook confirms the payment. Moving to Free needs no
+ * payment — it is scheduled for the end of the paid period.
  */
 export default function CheckoutDialog({ open, planKey, onOpenChange }) {
-  const { plan, changePlan, isOwner, pendingPlanEffectiveAt, formatDate } = useSubscription();
+  const { plan, changePlan, isOwner, pendingPlanEffectiveAt, formatDate, startCheckout } = useSubscription();
   const { toast } = useToast();
   const [processing, setProcessing] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const target = PLAN_BY_KEY[planKey] || PLAN_BY_KEY.free;
-  const downgrade = planRank(target.key) < planRank(plan);
   const current = PLAN_BY_KEY[plan] || PLAN_BY_KEY.free;
+  const paid = target.key !== "free";
+  const downgrade = !paid && current.key !== "free";
 
   useEffect(() => {
-    if (!open) setProcessing(false);
+    if (!open) {
+      setProcessing(false);
+      setRedirecting(false);
+    }
   }, [open]);
 
   const handleConfirm = async () => {
     if (processing) return;
     setProcessing(true);
     try {
-      // Brief pause so the simulated transaction reads as a real one.
-      await new Promise((resolve) => setTimeout(resolve, 900));
-      await changePlan(target.key);
-      onOpenChange(false);
+      if (!paid) {
+        await changePlan(target.key);
+        onOpenChange(false);
+        return;
+      }
+      await startCheckout(target.key);
+      // The browser is on its way to Yoco; keep the dialog in its waiting state.
+      setRedirecting(true);
     } catch (error) {
-      toast({ title: "Payment failed", description: error.message, variant: "destructive" });
-    } finally {
+      toast({ title: "Could not start the payment", description: error.message, variant: "destructive" });
       setProcessing(false);
     }
   };
@@ -43,7 +52,9 @@ export default function CheckoutDialog({ open, planKey, onOpenChange }) {
     <Dialog open={open} onOpenChange={processing ? undefined : onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{downgrade ? `Downgrade to ${target.name}` : `Upgrade to ${target.name}`}</DialogTitle>
+          <DialogTitle>
+            {downgrade ? `Downgrade to ${target.name}` : paid ? `Subscribe to ${target.name}` : target.name}
+          </DialogTitle>
           <DialogDescription>{target.blurb}</DialogDescription>
         </DialogHeader>
 
@@ -69,29 +80,42 @@ export default function CheckoutDialog({ open, planKey, onOpenChange }) {
           {downgrade ? (
             <p className="text-xs text-slate-600">
               You keep {current.name} until {formatDate(pendingPlanEffectiveAt) || "the end of this billing period"}.
-              From then on {target.name} features stay available and the rest are locked.
+              From then on the Free plan applies and paid features are locked.
             </p>
-          ) : (
-            <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                <CreditCard size={18} weight="duotone" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-800">•••• •••• •••• 4242</p>
-                <p className="text-[11px] text-slate-500">Test card · 12/34</p>
+          ) : paid ? (
+            <>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                  <CreditCard size={18} weight="duotone" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-800">Yoco secure checkout</p>
+                  <p className="text-[11px] text-slate-500">
+                    Card or instant EFT on Yoco's payment page. We never see your card details.
+                  </p>
+                </div>
               </div>
-            </div>
+              <p className="rounded-lg bg-teal-50 p-3 text-[11px] leading-relaxed text-teal-900">
+                {target.priceLabel} buys {PERIOD_DAYS} days of {target.name} from the moment Yoco confirms
+                your payment. If the next payment is not settled, you keep everything for another{" "}
+                {GRACE_DAYS} days before the shop drops back to Free.
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-slate-600">
+              The Free plan has no monthly fee. Paid features are locked until you upgrade.
+            </p>
           )}
 
           <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
             <ShieldCheck size={14} weight="duotone" className="text-teal-600" />
-            Simulated payment — no real charge is made and no card details are collected.
+            {paid
+              ? "Your plan activates only after Yoco confirms the payment."
+              : "No payment is taken when you move to Free."}
           </p>
 
           {!isOwner && (
-            <p className="text-xs text-amber-700">
-              Only the shop owner can change the subscription.
-            </p>
+            <p className="text-xs text-amber-700">Only the shop owner can change the subscription.</p>
           )}
 
           <div className="flex gap-2">
@@ -106,12 +130,14 @@ export default function CheckoutDialog({ open, planKey, onOpenChange }) {
               {processing ? (
                 <>
                   <CircleNotch size={16} weight="bold" className="mr-2 animate-spin" />
-                  Processing…
+                  {redirecting ? "Opening Yoco…" : "Starting…"}
                 </>
               ) : downgrade ? (
                 "Schedule downgrade"
+              ) : paid ? (
+                `Pay ${target.priceLabel} with Yoco`
               ) : (
-                `Pay ${target.priceLabel}`
+                "Stay on Free"
               )}
             </Button>
           </div>

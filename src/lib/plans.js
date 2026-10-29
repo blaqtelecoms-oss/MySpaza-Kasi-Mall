@@ -131,6 +131,42 @@ export function shopCountLabel(planKey) {
   return `${limit} shop${limit === 1 ? "" : "s"}`;
 }
 
+/** A paid period runs 30 days from the confirmed payment, then a 7-day grace. */
+export const PERIOD_DAYS = 30;
+export const GRACE_DAYS = 7;
+
+/**
+ * Where a shop's paid period stands. The server computes the same value in
+ * `public.shop_billing()`, which is authoritative; this mirrors it for the
+ * legacy fallback path and for countdowns.
+ *
+ * `free` — no paid plan; `active` — inside the 30 paid days;
+ * `grace` — period ended, still inside the 7-day window;
+ * `expired` — grace is over, paid features are locked.
+ */
+export function planStatus(billing) {
+  if (!billing) return "free";
+  const plan = billing.plan || "free";
+  if (plan === "free") return billing.stored_plan && billing.stored_plan !== "free" ? "expired" : "free";
+
+  const end = billing.current_period_end ? new Date(billing.current_period_end) : null;
+  if (!end) return "active";
+  const now = new Date();
+  if (now <= end) return "active";
+
+  const graceEnd = billing.grace_ends_at
+    ? new Date(billing.grace_ends_at)
+    : new Date(end.getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000);
+  return now <= graceEnd ? "grace" : "expired";
+}
+
+/** Whole days from now until a date, never negative. */
+export function daysLeft(value) {
+  if (!value) return 0;
+  const diff = new Date(value).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / (24 * 60 * 60 * 1000)));
+}
+
 /**
  * The plan in force right now from a `shop_subscription` row: a scheduled
  * downgrade only takes over once its effective date has passed (the same rule

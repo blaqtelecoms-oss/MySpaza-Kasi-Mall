@@ -10,6 +10,7 @@ import { MobileSelect } from "@/components/ui/mobile-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import GroupInvites from "@/components/myspazacard/GroupInvites";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const fmt = (a) => "R " + Number(a || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -20,10 +21,24 @@ export default function SavingsGroupsTab() {
   const loading = groupsQuery.isLoading && !groupsQuery.data;
   const [modal, setModal] = useState(false);
   const [edit, setEdit] = useState(null);
+  const [confirmGroup, setConfirmGroup] = useState(null);
   const { toast } = useToast();
 
   useEffect(() => { setGroups(groupsQuery.data || []); }, [groupsQuery.data]);
   const load = () => invalidate("SavingsGroup");
+
+  const removeGroup = async (group) => {
+    try {
+      await api.groups.remove("savings_group", group.id);
+      setGroups((current) => current.filter((row) => row.id !== group.id));
+      toast({ title: "Group removed", description: "Its open invitations were cancelled too." });
+    } catch (error) {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+    } finally {
+      setConfirmGroup(null);
+      load();
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -55,13 +70,7 @@ export default function SavingsGroupsTab() {
                   </div>
                   <div className="flex items-center gap-1">
                     <button onClick={() => { setEdit(g); setModal(true); }}><Pencil size={15} className="text-gray-400 hover:text-gray-600" /></button>
-                    <button onClick={() => {
-                      setGroups(prev => prev.filter(x => x.id !== g.id));
-                      api.entities.SavingsGroup.delete(g.id).catch(() => {
-                        toast({ title: "Delete failed", variant: "destructive" });
-                        load();
-                      });
-                    }}>
+                    <button onClick={() => setConfirmGroup(g)} aria-label={`Remove ${g.name}`}>
                       <Trash2 size={15} className="text-red-400 hover:text-red-600" />
                     </button>
                   </div>
@@ -107,6 +116,16 @@ export default function SavingsGroupsTab() {
       )}
 
       {modal && <GroupForm edit={edit} onClose={() => setModal(false)} onSaved={() => { setModal(false); load(); }} />}
+      {confirmGroup && (
+        <ConfirmDialog
+          open
+          onOpenChange={() => setConfirmGroup(null)}
+          title={`Remove ${confirmGroup.name}?`}
+          description="The group, its member list and any open invitations are removed. This cannot be undone."
+          confirmLabel="Remove group"
+          onConfirm={() => removeGroup(confirmGroup)}
+        />
+      )}
     </div>
   );
 }
@@ -136,16 +155,17 @@ function GroupForm({ edit, onClose, onSaved }) {
   const submit = async () => {
     if (!form.name) { toast({ title: "Group name required", variant: "destructive" }); return; }
     setSaving(true);
+    const payload = { ...form, member_count: form.members.length };
     try {
       if (edit) {
-        await api.entities.SavingsGroup.update(edit.id, form);
+        await api.entities.SavingsGroup.update(edit.id, payload);
       } else {
-        await api.entities.SavingsGroup.create(form);
+        await api.entities.SavingsGroup.create(payload);
       }
       toast({ title: edit ? "Group updated" : "Group created" });
       onSaved();
     } catch (e) {
-      toast({ title: "Error", description: "Could not save", variant: "destructive" });
+      toast({ title: "Error", description: e.message || "Could not save", variant: "destructive" });
     }
     setSaving(false);
   };

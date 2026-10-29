@@ -15,14 +15,19 @@ import { handleAuthEmailHook } from "../../server/lib/auth-email-hook.js";
 import { handleResendWebhook } from "../../server/lib/resend-webhook.js";
 import { handleCreateShopInvite } from "../../server/lib/shop-invite.js";
 import { handleCreateGroupInvite } from "../../server/lib/group-invite.js";
+import { handleCreateCheckout } from "../../server/lib/billing-checkout.js";
+import { handleYocoWebhook } from "../../server/lib/yoco-webhook.js";
 import { resendConfigured, senderAddress } from "../../server/lib/resend.js";
 import { supabaseRestConfigured } from "../../server/lib/supabase-rest.js";
+import { yocoConfigured, yocoWebhookConfigured } from "../../server/lib/yoco.js";
 
 const routes = {
   "/api/hooks/supabase/send-email": handleAuthEmailHook,
   "/api/webhooks/resend": handleResendWebhook,
   "/api/invitations": handleCreateShopInvite,
   "/api/group-invitations": handleCreateGroupInvite,
+  "/api/billing/checkout": handleCreateCheckout,
+  "/api/webhooks/yoco": handleYocoWebhook,
 };
 
 const FUNCTION_PREFIX = "/.netlify/functions/api";
@@ -49,6 +54,8 @@ export default async (request) => {
       resend: resendConfigured(),
       from: senderAddress(),
       storage: supabaseRestConfigured(),
+      yoco: yocoConfigured(),
+      yoco_webhook: yocoWebhookConfigured(),
     });
   }
 

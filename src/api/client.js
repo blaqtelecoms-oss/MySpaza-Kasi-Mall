@@ -7,7 +7,7 @@
 // level security decides what each user can see.
 import { supabase } from "@/api/supabase";
 import { installOfflineLayer } from "@/lib/offlineLayer";
-import { resolvePlan, shopLimit } from "@/lib/plans";
+import { planStatus, resolvePlan, shopLimit } from "@/lib/plans";
 
 /** Entity name → Postgres table. */
 const TABLES = {
@@ -633,9 +633,14 @@ const shop = {
       memberId: active?.member_id || null,
       memberEmail: active?.member_email || null,
       plan,
+      storedPlan: billing?.stored_plan || plan,
       pendingPlan: billing?.pending_plan || null,
       pendingPlanEffectiveAt: billing?.pending_plan_effective_at || null,
+      periodStart: billing?.period_start || null,
       currentPeriodEnd: billing?.current_period_end || null,
+      graceEndsAt: billing?.grace_ends_at || null,
+      lastPaymentAt: billing?.last_payment_at || null,
+      paymentStatus: billing?.payment_status || planStatus(billing),
     };
   },
 
@@ -666,9 +671,9 @@ const shop = {
   },
 
   /**
-   * Owner: change the shop's plan. An upgrade applies immediately; a downgrade
-   * is stored and takes over at the end of the paid period. The database
-   * decides both (public.set_shop_plan), so the browser cannot skip the rules.
+   * Owner: schedule a move to Free. Paid plans are never switched on from the
+   * browser — a Yoco payment has to be confirmed first (see `billing`). The
+   * database decides the timing (public.set_shop_plan).
    */
   async setPlan(planKey) {
     const { data, error } = await supabase.rpc("set_shop_plan", { p_plan: planKey });
@@ -739,6 +744,60 @@ const shop = {
 };
 
 /**
+ * Paid subscriptions. The browser asks the API service for a Yoco hosted
+ * checkout (the secret key stays on the server) and reads the payment row while
+ * Yoco's signed webhook settles it. A plan is never activated from here.
+ */
+const billing = {
+  /** Owner: open Yoco's hosted payment page for Premium or Ultra. */
+  async startCheckout(planKey) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Sign in to pay for a plan.");
+
+    const shopId = await currentShopId();
+    const response = await fetch("/api/billing/checkout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ plan: planKey, shopId }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Payment could not start (${response.status})`);
+    return body;
+  },
+
+  /** One payment attempt, polled after the owner returns from Yoco. */
+  async payment(id) {
+    if (!id) return null;
+    const { data, error } = await supabase
+      .from("subscription_payment")
+      .select("id,plan,amount_cents,currency,status,paid_at,created_date,failure_reason")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ?? null;
+  },
+
+  /**
+   * Recent attempts for this shop owner. Row level security returns rows only
+   * to the owner, so an employee simply sees an empty history.
+   */
+  async payments(limit = 6) {
+    const { data, error } = await supabase
+      .from("subscription_payment")
+      .select("id,plan,amount_cents,currency,status,paid_at,created_date,failure_reason")
+      .order("created_date", { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+};
+
+/**
  * Community groups — the stokvel, savings groups and bulk buys on the MySpaza
  * Card. An invitation names one group in the branch the owner is working in;
  * the email service creates it and Resend delivers the link. Accepting is a
@@ -776,9 +835,22 @@ const groups = {
     if (error) throw new Error(error.message);
     return data;
   },
+
+  /**
+   * Owner: remove a group and its open invitations in one transaction, so no
+   * invitation link keeps pointing at a deleted group.
+   */
+  async remove(groupKind, groupId) {
+    const { data, error } = await supabase.rpc("delete_community_group", {
+      p_kind: groupKind,
+      p_id: groupId,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
 };
 
-export const api = { entities, auth, integrations, shop, groups };
+export const api = { entities, auth, integrations, shop, groups, billing };
 
 // Transparent offline caching + write queueing over the entity layer.
 installOfflineLayer(api);

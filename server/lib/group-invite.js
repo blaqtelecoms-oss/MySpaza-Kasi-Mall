@@ -27,7 +27,7 @@ import { isEmail } from "./modules.js";
  * a stokvel has no name of its own, so its label is built from the shop.
  */
 const GROUPS = {
-  stokvel: { table: "stockfell_account", nameColumn: null, fallback: "Stokvel" },
+  stokvel: { table: "stockfell_account", nameColumn: "name", fallback: "Stokvel" },
   savings_group: { table: "savings_group", nameColumn: "name", fallback: "Savings group" },
   bulk_buy: { table: "bulk_buy", nameColumn: "title", fallback: "Bulk buy" },
 };
