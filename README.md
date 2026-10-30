@@ -166,6 +166,14 @@ npm run build
   exposed-secrets check and fails the build. The app's own return URL
   (`window.location.origin` + the `?next=` path) is a separate value and only has
   to be in Supabase's *Redirect URLs* allow list.
+- **First-run onboarding** — a new account lands on `/onboarding` before the app:
+  the business profile (the same `shop_settings.business` details Settings
+  edits), then a required plan choice. Free finishes there; Premium and Ultra
+  open the normal Yoco checkout. Completion is stored on the account
+  (`profiles.onboarded_at`, migration `20261105_shop_onboarding.sql`), so it
+  survives reloads and follows the person to another device; accounts that
+  existed before the flow shipped are grandfathered. Employees invited to a shop
+  skip it — they join a shop that is already set up.
 - **Profiles** — `public.profiles` mirrors each auth user (`id`, `email`,
   `full_name`, `role`). A row is created automatically on first sign-in when it
   is missing.

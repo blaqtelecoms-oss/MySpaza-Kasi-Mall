@@ -57,6 +57,13 @@ export const AuthProvider = ({ children }) => {
     return shopContext.permissions?.[module] === 'edit';
   }, [shopContext]);
 
+  // First-run setup is finished for good once the owner has a business profile
+  // and a plan; the marker lives on their profile, so it follows the account.
+  const completeOnboarding = useCallback(async () => {
+    await api.shop.completeOnboarding();
+    return refreshShop();
+  }, [refreshShop]);
+
   // Loads the signed-in user (auth account + profile) into context.
   const applySession = useCallback(async (session) => {
     // Cached data on this device belongs to whoever was signed in when it was
@@ -149,6 +156,8 @@ export const AuthProvider = ({ children }) => {
       authChecked,
       shop: shopContext,
       isShopOwner: Boolean(shopContext?.isOwner),
+      isOnboarded: Boolean(shopContext?.onboardedAt),
+      completeOnboarding,
       can,
       canEdit: canEditModule,
       refreshShop,
