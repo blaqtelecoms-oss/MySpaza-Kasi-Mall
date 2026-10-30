@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 const formatCurrency = (n) => `R ${(n || 0).toFixed(2)}`;
 const COLORS = ["#0D0D0D", "#2E9D5D", "#FFD426", "#B23D38", "#3a3a3a", "#7cc0a0"];
@@ -61,9 +61,9 @@ export default function Reports() {
     <div className="p-4 max-w-6xl mx-auto space-y-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Reports & Analytics</h1>
-          <p className="text-muted-foreground text-sm">Business performance overview</p>
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground sm:text-2xl">Reports & Analytics</h1>
+          <p className="text-sm text-muted-foreground">Business performance overview</p>
         </div>
         <Button variant="outline" className="gap-2"><Download size={16} /> Export</Button>
       </div>
@@ -122,10 +122,10 @@ export default function Reports() {
           </div>
 
           <Tabs defaultValue="sales">
-            <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="sales">Sales</TabsTrigger>
-              <TabsTrigger value="expenses">Expenses</TabsTrigger>
-              <TabsTrigger value="products">Products</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="sales" className="text-xs sm:text-sm">Sales</TabsTrigger>
+              <TabsTrigger value="expenses" className="text-xs sm:text-sm">Expenses</TabsTrigger>
+              <TabsTrigger value="products" className="text-xs sm:text-sm">Products</TabsTrigger>
             </TabsList>
 
             <TabsContent value="sales" className="space-y-4">
@@ -211,23 +211,23 @@ export default function Reports() {
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50">
                         <tr>
-                          <th className="text-left p-3 font-semibold text-muted-foreground">Product</th>
-                          <th className="text-right p-3 font-semibold text-muted-foreground">Price</th>
-                          <th className="text-right p-3 font-semibold text-muted-foreground">Stock</th>
-                          <th className="text-right p-3 font-semibold text-muted-foreground">Value</th>
+                          <th className="p-2 text-left font-semibold text-muted-foreground sm:p-3">Product</th>
+                          <th className="p-2 text-right font-semibold text-muted-foreground sm:p-3">Price</th>
+                          <th className="p-2 text-right font-semibold text-muted-foreground sm:p-3">Stock</th>
+                          <th className="hidden p-2 text-right font-semibold text-muted-foreground sm:table-cell sm:p-3">Value</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {products.map(p => (
                           <tr key={p.id} className="hover:bg-muted/40">
-                            <td className="p-3 font-medium text-foreground">{p.name}</td>
-                            <td className="p-3 text-right text-green-700 dark:text-green-400 font-semibold">{formatCurrency(p.selling_price)}</td>
-                            <td className="p-3 text-right">
+                            <td className="max-w-[9rem] truncate p-2 font-medium text-foreground sm:max-w-none sm:p-3">{p.name}</td>
+                            <td className="whitespace-nowrap p-2 text-right font-semibold text-green-700 dark:text-green-400 sm:p-3">{formatCurrency(p.selling_price)}</td>
+                            <td className="p-2 text-right sm:p-3">
                               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                                 p.stock_quantity <= (p.min_stock_level || 5) ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" : "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
                               }`}>{p.stock_quantity ?? 0}</span>
                             </td>
-                            <td className="p-3 text-right text-muted-foreground">{formatCurrency((p.cost_price || 0) * (p.stock_quantity || 0))}</td>
+                            <td className="hidden whitespace-nowrap p-2 text-right text-muted-foreground sm:table-cell sm:p-3">{formatCurrency((p.cost_price || 0) * (p.stock_quantity || 0))}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -246,10 +246,10 @@ export default function Reports() {
 function SummaryCard({ label, value, valueClass, icon, iconClass }) {
   return (
     <Card className="border-border">
-      <CardContent className="p-4">
+      <CardContent className="p-3 sm:p-4">
         <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${iconClass}`}>{icon}</div>
-        <p className={`text-xl font-bold mt-3 ${valueClass}`}>{value}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+        <p className={`mt-2 text-base font-bold tabular-nums sm:mt-3 sm:text-xl ${valueClass}`}>{value}</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground sm:text-xs">{label}</p>
       </CardContent>
     </Card>
   );

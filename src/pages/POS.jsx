@@ -3,15 +3,13 @@ import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity, entityQueryKey } from "@/hooks/useEntityQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
+import { Search, ShoppingCart, CheckCircle, Printer, Send, WifiOff, Check } from "lucide-react";
 import {
-  Search, ShoppingCart, Plus, Minus, Trash2, CreditCard, Banknote,
-  X, CheckCircle, Printer, Send, Barcode, Grid, List,
-  RotateCcw, Pause, Tag, User, ChevronDown, WifiOff, Check
-} from "lucide-react";
+  Money, Bank, DeviceMobile, QrCode, Receipt as ReceiptIcon, Package as PackageIcon,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useToast } from "@/components/ui/use-toast";
@@ -22,22 +20,13 @@ import { printReceipt } from "@/lib/receipt";
 const formatCurrency = (amount) => `R ${(amount || 0).toFixed(2)}`;
 
 const PAYMENT_METHODS = [
-  { id: "cash", label: "Cash", icon: "💵", color: "bg-green-500" },
-  { id: "card", label: "Card", icon: "💳", color: "bg-blue-500" },
-  { id: "eft", label: "EFT", icon: "🏦", color: "bg-purple-500" },
-  { id: "mobile_money", label: "Mobile", icon: "📱", color: "bg-yellow-500" },
-  { id: "qr_code", label: "QR Code", icon: "📲", color: "bg-teal-500" },
-  { id: "credit", label: "Credit", icon: "🧾", color: "bg-orange-500" },
+  { id: "cash", label: "Cash", icon: Money, color: "bg-green-500" },
+  { id: "card", label: "Card", icon: CreditCard, color: "bg-blue-500" },
+  { id: "eft", label: "EFT", icon: Bank, color: "bg-purple-500" },
+  { id: "mobile_money", label: "Mobile", icon: DeviceMobile, color: "bg-yellow-500" },
+  { id: "qr_code", label: "QR Code", icon: QrCode, color: "bg-teal-500" },
+  { id: "credit", label: "Credit", icon: ReceiptIcon, color: "bg-orange-500" },
 ];
-
-const CATEGORY_EMOJI = {
-  "Food & Groceries": "🍚",
-  "Drinks & Beverages": "🥤",
-  "Snacks & Sweets": "🍬",
-  "Household": "🧼",
-  "Personal Care": "🧴",
-  "Dairy": "🥛",
-};
 
 export default function POS() {
   const productsQuery = useEntityQuery("Product", "filter", [{ is_active: true }]);
@@ -306,11 +295,11 @@ export default function POS() {
                   onClick={() => addToCart(product)}
                   className="bg-white border-2 border-gray-100 hover:border-green-400 rounded-2xl p-3 text-left transition-all active:scale-95 shadow-sm hover:shadow-md"
                 >
-                  <div className="aspect-square bg-gradient-to-br from-green-50 to-blue-50 rounded-xl mb-2 flex items-center justify-center text-4xl">
+                  <div className="aspect-square bg-gradient-to-br from-green-50 to-blue-50 rounded-xl mb-2 flex items-center justify-center">
                     {product.image_url ? (
                       <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded-xl" />
                     ) : (
-                      CATEGORY_EMOJI[product.category] || "🛒"
+                      <PackageIcon size={30} weight="duotone" className="text-slate-400" />
                     )}
                   </div>
                   <p className="text-sm font-semibold text-gray-800 line-clamp-2 leading-tight">{product.name}</p>
@@ -417,7 +406,7 @@ export default function POS() {
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                 >
-                  <span className="text-2xl">{pm.icon}</span>
+                  <pm.icon size={22} weight="duotone" className="text-slate-700" />
                   <span className="text-xs font-medium">{pm.label}</span>
                 </button>
               ))}

@@ -3,7 +3,7 @@ import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import { api } from "@/api/client";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
 import {
-  TrendingDown, Search, Phone, Wallet, CheckCircle, UserPlus, ArrowLeft,
+  TrendingDown, Search, Phone, Wallet, CheckCircle, ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,28 +59,28 @@ export default function DebtorsControl() {
         <button onClick={() => navigate(-1)} className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-muted">
           <ArrowLeft size={20} className="text-foreground" />
         </button>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <TrendingDown size={24} className="text-red-500" />
-            <h1 className="text-2xl font-bold text-foreground">Debtors Control</h1>
+            <TrendingDown size={24} className="shrink-0 text-red-500" />
+            <h1 className="text-xl font-bold text-foreground sm:text-2xl">Debtors Control</h1>
             <QueryRefreshIndicator isFetching={customersQuery.isFetching} hasData={allCustomers.length > 0} />
           </div>
-          <p className="text-muted-foreground text-sm">Customers buying on credit and their outstanding balances</p>
+          <p className="text-sm text-muted-foreground">Customers buying on credit and their outstanding balances</p>
         </div>
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <Card className="bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900">
-          <CardContent className="p-4 text-center">
-            <p className="text-xs text-red-600 dark:text-red-400">Total Outstanding Debt</p>
-            <p className="text-2xl font-bold text-red-700 dark:text-red-400">{formatCurrency(totalDebt)}</p>
+          <CardContent className="p-3 text-center sm:p-4">
+            <p className="text-[11px] text-red-600 dark:text-red-400 sm:text-xs">Total Outstanding Debt</p>
+            <p className="text-lg font-bold tabular-nums text-red-700 dark:text-red-400 sm:text-2xl">{formatCurrency(totalDebt)}</p>
           </CardContent>
         </Card>
         <Card className="bg-muted border-border">
-          <CardContent className="p-4 text-center">
-            <p className="text-xs text-muted-foreground">Active Debtors</p>
-            <p className="text-2xl font-bold text-foreground">{debtors.length}</p>
+          <CardContent className="p-3 text-center sm:p-4">
+            <p className="text-[11px] text-muted-foreground sm:text-xs">Active Debtors</p>
+            <p className="text-lg font-bold text-foreground sm:text-2xl">{debtors.length}</p>
           </CardContent>
         </Card>
       </div>

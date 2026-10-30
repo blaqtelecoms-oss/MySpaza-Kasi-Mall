@@ -67,15 +67,15 @@ export default function Suppliers() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-foreground">Suppliers</h1>
+            <h1 className="text-xl font-bold text-foreground sm:text-2xl">Suppliers</h1>
             <QueryRefreshIndicator isFetching={suppliersQuery.isFetching} hasData={suppliers.length > 0} />
           </div>
-          <p className="text-muted-foreground text-sm">Total outstanding: <span className="text-red-600 dark:text-red-400 font-semibold">{formatCurrency(totalOwed)}</span></p>
+          <p className="text-sm text-muted-foreground">Total outstanding: <span className="font-semibold text-red-600 dark:text-red-400">{formatCurrency(totalOwed)}</span></p>
         </div>
-        <Button onClick={openNew} className="bg-green-600 hover:bg-green-700 gap-2"><Plus size={18} /> Add Supplier</Button>
+        <Button onClick={openNew} className="gap-2 bg-green-600 hover:bg-green-700"><Plus size={16} /> Add Supplier</Button>
       </div>
 
       {/* Devland Wholesale Banner */}

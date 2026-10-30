@@ -3,14 +3,14 @@ import { useEntityQuery } from "@/hooks/useEntityQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
 import {
-  TrendingUp, TrendingDown, ShoppingCart, Package, DollarSign,
-  AlertTriangle, Building2, Users, ArrowUpRight, ArrowDownRight,
-  BarChart2, Star, Clock, Zap, RefreshCw, ChevronRight,
-  Truck, Receipt, Banknote, Bot, GraduationCap
-} from "lucide-react";
+  ShoppingCart, Package, CurrencyDollar, Warning, ArrowUpRight, ArrowDownRight,
+  ChartBar, Star, ArrowsClockwise, CaretRight, Truck, Receipt, Money, Robot,
+  GraduationCap, TrendUp,
+} from "@phosphor-icons/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import IconTile from "@/components/ui/icon-tile";
 import AdBanner from "@/components/AdBanner";
 import AcademyPromoBanner from "@/components/ads/AcademyPromoBanner";
 
@@ -64,7 +64,7 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center h-full p-8">
         <div className="text-center">
-          <RefreshCw className="mx-auto mb-3 animate-spin text-muted-foreground" size={40} />
+          <ArrowsClockwise className="mx-auto mb-3 animate-spin text-muted-foreground" size={40} />
           <p className="text-muted-foreground">Loading your dashboard...</p>
         </div>
       </div>
@@ -74,31 +74,35 @@ export default function Dashboard() {
   return (
     <div className="p-4 max-w-7xl mx-auto space-y-6">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-[#0D0D0D] to-[#1c1c1c] rounded-2xl p-5 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
-            <p className="text-white/60 mt-1">Here's how your shop is doing today</p>
+      <div className="bg-gradient-to-r from-[#0D0D0D] to-[#1c1c1c] rounded-2xl p-4 text-white sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Welcome back</h1>
+            <p className="mt-1 text-sm text-white/60">Here's how your shop is doing today</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <QueryRefreshIndicator isFetching={salesQuery.isFetching || productsQuery.isFetching} hasData={products.length > 0} />
-            <button onClick={refresh} className="bg-white/10 hover:bg-white/20 rounded-xl p-2 transition">
-              <RefreshCw size={20} />
+            <button
+              onClick={refresh}
+              aria-label="Refresh dashboard"
+              className="rounded-xl bg-white/10 p-2 transition hover:bg-white/20"
+            >
+              <ArrowsClockwise size={19} weight="bold" />
             </button>
           </div>
         </div>
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          <div className="bg-white/10 rounded-xl p-3 text-center">
-            <p className="text-white/50 text-xs">Cash Sales</p>
-            <p className="text-white font-bold text-lg">{formatCurrency(todayCash)}</p>
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="bg-white/10 rounded-xl p-2.5 text-center sm:p-3">
+            <p className="text-[11px] text-white/50 sm:text-xs">Cash Sales</p>
+            <p className="text-sm font-bold text-white sm:text-lg">{formatCurrency(todayCash)}</p>
           </div>
-          <div className="bg-white/10 rounded-xl p-3 text-center">
-            <p className="text-white/50 text-xs">Card Sales</p>
-            <p className="text-white font-bold text-lg">{formatCurrency(todayCard)}</p>
+          <div className="bg-white/10 rounded-xl p-2.5 text-center sm:p-3">
+            <p className="text-[11px] text-white/50 sm:text-xs">Card Sales</p>
+            <p className="text-sm font-bold text-white sm:text-lg">{formatCurrency(todayCard)}</p>
           </div>
-          <div className="bg-white/10 rounded-xl p-3 text-center">
-            <p className="text-white/50 text-xs">Transactions</p>
-            <p className="text-white font-bold text-lg">{todaySales.length}</p>
+          <div className="bg-white/10 rounded-xl p-2.5 text-center sm:p-3">
+            <p className="text-[11px] text-white/50 sm:text-xs">Transactions</p>
+            <p className="text-sm font-bold text-white sm:text-lg">{todaySales.length}</p>
           </div>
         </div>
       </div>
@@ -114,27 +118,31 @@ export default function Dashboard() {
         <MetricCard
           title="Today's Sales"
           value={formatCurrency(todayRevenue)}
-          icon={<ShoppingCart size={20} />}
+          icon={ShoppingCart}
+          tone="green"
           trend={todayRevenue > 0}
           link="/pos"
         />
         <MetricCard
           title="Today's Profit"
           value={formatCurrency(todayProfit)}
-          icon={<TrendingUp size={20} />}
+          icon={TrendUp}
+          tone="teal"
           trend={todayProfit > 0}
           link="/reports"
         />
         <MetricCard
           title="Stock Value"
           value={formatCurrency(stockValue)}
-          icon={<Package size={20} />}
+          icon={Package}
+          tone="blue"
           link="/inventory"
         />
         <MetricCard
           title="Today's Expenses"
           value={formatCurrency(todayExpenses)}
-          icon={<DollarSign size={20} />}
+          icon={CurrencyDollar}
+          tone="amber"
           link="/expenses"
         />
       </div>
@@ -145,17 +153,15 @@ export default function Dashboard() {
         <Card className={`border-2 ${lowStockProducts.length > 0 ? "border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900" : "border-border bg-muted/50"}`}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-xl ${lowStockProducts.length > 0 ? "bg-red-100 dark:bg-red-900/50" : "bg-muted"}`}>
-                <AlertTriangle size={20} className={lowStockProducts.length > 0 ? "text-red-700 dark:text-red-400" : "text-muted-foreground"} />
-              </div>
-              <div className="flex-1">
+              <IconTile icon={Warning} tone={lowStockProducts.length > 0 ? "red" : "slate"} />
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-foreground">Low Stock Items</p>
                 <p className={`text-2xl font-bold ${lowStockProducts.length > 0 ? "text-red-700 dark:text-red-400" : "text-foreground"}`}>
                   {lowStockProducts.length}
                 </p>
               </div>
-              <Link to="/inventory">
-                <ChevronRight size={18} className="text-muted-foreground" />
+              <Link to="/inventory" aria-label="View low stock items" className="shrink-0 p-1">
+                <CaretRight size={18} weight="bold" className="text-muted-foreground" />
               </Link>
             </div>
           </CardContent>
@@ -165,14 +171,15 @@ export default function Dashboard() {
         <Card className={`border-2 ${healthBg}`}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-white">
-                <Star size={20} className={healthColor} />
-              </div>
-              <div className="flex-1">
+              <IconTile
+                icon={Star}
+                tone={healthScore >= 75 ? "green" : healthScore >= 50 ? "amber" : "red"}
+              />
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-foreground">Business Health</p>
                 <p className={`text-2xl font-bold ${healthColor}`}>{healthScore}/100</p>
               </div>
-              <div className="w-12 h-12">
+              <div className="w-12 h-12 shrink-0">
                 <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
                   <circle cx="18" cy="18" r="15" fill="none" stroke="#e5e7eb" strokeWidth="3"/>
                   <circle cx="18" cy="18" r="15" fill="none"
@@ -191,16 +198,14 @@ export default function Dashboard() {
         <Card className={`border-2 ${todayCashup ? "border-border bg-muted/50" : "border-border"}`}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-muted">
-                <DollarSign size={20} className="text-foreground" />
-              </div>
-              <div className="flex-1">
+              <IconTile icon={Money} tone="teal" />
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-foreground">Cash Up</p>
                 <p className={`text-sm font-bold ${todayCashup ? "text-foreground" : "text-muted-foreground"}`}>
                   {todayCashup ? `Status: ${todayCashup.status}` : "Not done yet"}
                 </p>
               </div>
-              <Link to="/cashup">
+              <Link to="/cashup" className="shrink-0">
                 <Button size="sm" variant={todayCashup ? "outline" : "default"} className="text-xs">
                   {todayCashup ? "View" : "Start"}
                 </Button>
@@ -223,7 +228,7 @@ export default function Dashboard() {
           <CardContent>
             {recentSales.length === 0 ? (
               <div className="text-center py-8">
-                <ShoppingCart size={40} className="mx-auto text-gray-300 mb-2" />
+                <ShoppingCart size={40} weight="duotone" className="mx-auto text-gray-300 mb-2" />
                 <p className="text-muted-foreground text-sm">No sales today yet</p>
                 <Link to="/pos">
                   <Button className="mt-3 bg-green-600 hover:bg-green-700 text-sm">Start Selling</Button>
@@ -235,7 +240,7 @@ export default function Dashboard() {
                   <div key={sale.id} className="flex items-center justify-between p-3 bg-muted rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 bg-background rounded-lg flex items-center justify-center ring-1 ring-border">
-                        <ShoppingCart size={16} className="text-foreground" />
+                        <ShoppingCart size={18} weight="duotone" className="text-foreground" />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-800">
@@ -268,11 +273,11 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-3">
               <QuickAction to="/pos" icon={ShoppingCart} label="New Sale" />
               <QuickAction to="/inventory" icon={Package} label="Add Product" />
-              <QuickAction to="/cashup" icon={Banknote} label="Cash Up" />
+              <QuickAction to="/cashup" icon={Money} label="Cash Up" />
               <QuickAction to="/expenses" icon={Receipt} label="Log Expense" />
               <QuickAction to="/suppliers" icon={Truck} label="Suppliers" />
-              <QuickAction to="/reports" icon={BarChart2} label="Reports" />
-              <QuickAction to="/coach" icon={Bot} label="Spaza Coach" />
+              <QuickAction to="/reports" icon={ChartBar} label="Reports" />
+              <QuickAction to="/coach" icon={Robot} label="Spaza Coach" />
               <QuickAction to="/academy" icon={GraduationCap} label="Academy" />
             </div>
           </CardContent>
@@ -285,7 +290,7 @@ export default function Dashboard() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold text-red-700 dark:text-red-400 flex items-center gap-2">
-                <AlertTriangle size={18} /> Low Stock Alert
+                <Warning size={18} weight="duotone" /> Low Stock Alert
               </CardTitle>
               <Link to="/inventory" className="text-red-600 dark:text-red-400 text-sm font-medium hover:underline">Manage Stock</Link>
             </div>
@@ -311,23 +316,21 @@ export default function Dashboard() {
   );
 }
 
-function MetricCard({ title, value, icon, trend, link }) {
+function MetricCard({ title, value, icon, trend, link, tone = "teal" }) {
   return (
     <Link to={link}>
-      <Card className="hover:shadow-md transition-shadow cursor-pointer">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between">
-            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-foreground mb-3">
-              {icon}
-            </div>
+      <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex items-start justify-between gap-2">
+            <IconTile icon={icon} tone={tone} size="sm" />
             {trend !== undefined && (
               <span className={`flex items-center gap-0.5 text-xs font-medium ${trend ? "text-green-600" : "text-red-600"}`}>
-                {trend ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                {trend ? <ArrowUpRight size={14} weight="bold" /> : <ArrowDownRight size={14} weight="bold" />}
               </span>
             )}
           </div>
-          <p className="text-2xl font-bold text-foreground leading-tight">{value}</p>
-          <p className="text-xs text-muted-foreground mt-1">{title}</p>
+          <p className="mt-2.5 text-lg font-bold text-foreground leading-tight sm:text-2xl">{value}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground sm:text-xs">{title}</p>
         </CardContent>
       </Card>
     </Link>
@@ -337,8 +340,8 @@ function MetricCard({ title, value, icon, trend, link }) {
 function QuickAction({ to, icon: Icon, label }) {
   return (
     <Link to={to}>
-      <div className="rounded-xl p-4 text-center border border-border bg-muted hover:bg-foreground hover:text-background hover:border-foreground transition-colors cursor-pointer">
-        <Icon size={22} strokeWidth={1.75} className="mx-auto mb-1.5" />
+      <div className="rounded-xl p-3 text-center border border-border bg-muted hover:bg-foreground hover:text-background hover:border-foreground transition-colors cursor-pointer sm:p-4">
+        <Icon size={24} weight="duotone" className="mx-auto mb-1.5" />
         <span className="text-xs font-semibold">{label}</span>
       </div>
     </Link>

@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
 import { useEntityQuery } from "@/hooks/useEntityQuery";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
-import { Receipt, Calendar, Package, TrendingUp, Search, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Receipt, CalendarBlank, Package, TrendUp, MagnifyingGlass, Warning, CaretDown, CaretRight,
+} from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,10 +71,10 @@ export default function DailySales() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Daily Sales Report</h1>
-          <p className="text-sm text-muted-foreground">{periodLabel}</p>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground sm:text-2xl">Daily Sales Report</h1>
+          <p className="truncate text-sm text-muted-foreground">{periodLabel}</p>
         </div>
         <QueryRefreshIndicator isFetching={salesQuery.isFetching || productsQuery.isFetching} hasData={sales.length > 0} />
       </div>
@@ -80,12 +82,12 @@ export default function DailySales() {
       {/* Filters */}
       <Card>
         <CardContent className="p-4 space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant={view === "day" ? "default" : "outline"} size="sm" onClick={() => setView("day")}>
-              <Calendar size={14} /> By Day
+              <CalendarBlank size={14} weight="bold" /> By Day
             </Button>
             <Button variant={view === "month" ? "default" : "outline"} size="sm" onClick={() => setView("month")}>
-              <Calendar size={14} /> By Month
+              <CalendarBlank size={14} weight="bold" /> By Month
             </Button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -103,7 +105,7 @@ export default function DailySales() {
             <div>
               <Label className="text-sm text-muted-foreground">Search items / receipts</Label>
               <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <MagnifyingGlass size={14} weight="bold" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input className="pl-8" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
               </div>
             </div>
@@ -112,23 +114,32 @@ export default function DailySales() {
       </Card>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground"><Receipt size={14} /><span className="text-xs">Transactions</span></div>
-            <p className="text-xl font-bold mt-1">{inRange.length}</p>
+          <CardContent className="p-2.5 sm:p-4">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Receipt size={14} weight="duotone" className="shrink-0" />
+              <span className="truncate text-[11px] sm:text-xs">Transactions</span>
+            </div>
+            <p className="mt-1 text-base font-bold tabular-nums sm:text-xl">{inRange.length}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground"><TrendingUp size={14} /><span className="text-xs">Total Sales</span></div>
-            <p className="text-xl font-bold text-green-700 mt-1">{formatCurrency(totalSales)}</p>
+          <CardContent className="p-2.5 sm:p-4">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <TrendUp size={14} weight="duotone" className="shrink-0" />
+              <span className="truncate text-[11px] sm:text-xs">Total Sales</span>
+            </div>
+            <p className="mt-1 text-sm font-bold tabular-nums text-green-700 sm:text-xl">{formatCurrency(totalSales)}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground"><Package size={14} /><span className="text-xs">Items Sold</span></div>
-            <p className="text-xl font-bold mt-1">{totalItems}</p>
+          <CardContent className="p-2.5 sm:p-4">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Package size={14} weight="duotone" className="shrink-0" />
+              <span className="truncate text-[11px] sm:text-xs">Items Sold</span>
+            </div>
+            <p className="mt-1 text-base font-bold tabular-nums sm:text-xl">{totalItems}</p>
           </CardContent>
         </Card>
       </div>
@@ -136,18 +147,18 @@ export default function DailySales() {
       {/* Items audit vs inventory */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2"><Package size={16} /> Items Sold — Inventory Audit</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><Package size={16} weight="duotone" className="shrink-0 text-slate-600" /> Items Sold — Inventory Audit</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
                 <tr>
-                  <th className="text-left p-3 font-medium">Product</th>
-                  <th className="text-right p-3 font-medium">Qty Sold</th>
-                  <th className="text-right p-3 font-medium">Revenue</th>
-                  <th className="text-right p-3 font-medium">Stock Now</th>
-                  <th className="text-left p-3 font-medium">Audit</th>
+                  <th className="text-left p-2 font-medium sm:p-3">Product</th>
+                  <th className="text-right p-2 font-medium sm:p-3">Qty Sold</th>
+                  <th className="hidden text-right p-2 font-medium sm:table-cell sm:p-3">Revenue</th>
+                  <th className="text-right p-2 font-medium sm:p-3">Stock</th>
+                  <th className="text-left p-2 font-medium sm:p-3">Audit</th>
                 </tr>
               </thead>
               <tbody>
@@ -159,19 +170,19 @@ export default function DailySales() {
                   const mismatch = row.stock !== null && row.stock < 0;
                   return (
                     <tr key={row.id} className="border-t">
-                      <td className="p-3 font-medium">{row.name}</td>
-                      <td className="p-3 text-right">{row.qty} {row.unit}</td>
-                      <td className="p-3 text-right">{formatCurrency(row.revenue)}</td>
-                      <td className="p-3 text-right">{row.stock === null ? "—" : row.stock}</td>
-                      <td className="p-3">
+                      <td className="max-w-[8rem] truncate p-2 font-medium sm:max-w-none sm:p-3">{row.name}</td>
+                      <td className="whitespace-nowrap p-2 text-right sm:p-3">{row.qty} {row.unit}</td>
+                      <td className="hidden whitespace-nowrap p-2 text-right sm:table-cell sm:p-3">{formatCurrency(row.revenue)}</td>
+                      <td className="p-2 text-right sm:p-3">{row.stock === null ? "—" : row.stock}</td>
+                      <td className="p-2 sm:p-3">
                         {mismatch ? (
-                          <Badge variant="destructive" className="gap-1"><AlertTriangle size={11} /> Stock mismatch</Badge>
+                          <Badge variant="destructive" className="gap-1 whitespace-nowrap text-[10px] sm:text-xs"><Warning size={11} weight="bold" /> Mismatch</Badge>
                         ) : lowStock ? (
-                          <Badge variant="secondary" className="gap-1 text-amber-700 bg-amber-100">Low stock</Badge>
+                          <Badge variant="secondary" className="gap-1 whitespace-nowrap bg-amber-100 text-[10px] text-amber-700 sm:text-xs">Low stock</Badge>
                         ) : row.stock === null ? (
-                          <Badge variant="outline">Not in inventory</Badge>
+                          <Badge variant="outline" className="whitespace-nowrap text-[10px] sm:text-xs">Not tracked</Badge>
                         ) : (
-                          <Badge variant="secondary" className="gap-1 text-green-700 bg-green-100">OK</Badge>
+                          <Badge variant="secondary" className="gap-1 bg-green-100 text-[10px] text-green-700 sm:text-xs">OK</Badge>
                         )}
                       </td>
                     </tr>
@@ -186,7 +197,7 @@ export default function DailySales() {
       {/* Sales list */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2"><Receipt size={16} /> Sales ({filteredSales.length})</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><Receipt size={16} weight="duotone" className="shrink-0 text-slate-600" /> Sales ({filteredSales.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y">
@@ -199,23 +210,23 @@ export default function DailySales() {
               return (
                 <div key={sale.id}>
                   <button
-                    className="w-full flex items-center justify-between p-3 hover:bg-muted/40 text-left"
+                    className="flex w-full flex-wrap items-center justify-between gap-2 p-3 text-left hover:bg-muted/40"
                     onClick={() => setExpanded(open ? null : sale.id)}
                   >
-                    <div className="flex items-center gap-3">
-                      {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                      <div>
-                        <p className="font-medium">{sale.sale_number || sale.receipt_number || "Sale"}</p>
-                        <p className="text-xs text-muted-foreground">{sale.sale_date} · {itemsCount} items · {sale.cashier_name || "Owner"}</p>
+                    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                      {open ? <CaretDown size={16} weight="bold" className="shrink-0" /> : <CaretRight size={16} weight="bold" className="shrink-0" />}
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{sale.sale_number || sale.receipt_number || "Sale"}</p>
+                        <p className="truncate text-xs text-muted-foreground">{sale.sale_date} · {itemsCount} items · {sale.cashier_name || "Owner"}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Badge variant="outline" className="capitalize">{sale.payment_method}</Badge>
+                    <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                      <Badge variant="outline" className="capitalize text-[10px] sm:text-xs">{sale.payment_method}</Badge>
                       <span className="font-bold">{formatCurrency(sale.total_amount)}</span>
                     </div>
                   </button>
                   {open && sale.items?.length > 0 && (
-                    <div className="px-12 pb-3">
+                    <div className="px-3 pb-3 sm:px-12">
                       <table className="w-full text-sm">
                         <thead className="text-muted-foreground">
                           <tr>

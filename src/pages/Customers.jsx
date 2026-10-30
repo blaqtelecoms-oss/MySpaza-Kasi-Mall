@@ -2,7 +2,7 @@ import { useState } from "react";
 import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
-import { Plus, Phone, Mail, Edit, Trash2, Users, Star, RefreshCw } from "lucide-react";
+import { Plus, Phone, Edit, Trash2, Users, Star, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,15 +62,15 @@ export default function Customers() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-foreground">Customers</h1>
+            <h1 className="text-xl font-bold text-foreground sm:text-2xl">Customers</h1>
             <QueryRefreshIndicator isFetching={customersQuery.isFetching} hasData={customers.length > 0} />
           </div>
-          <p className="text-muted-foreground text-sm">{customers.length} registered customers</p>
+          <p className="text-sm text-muted-foreground">{customers.length} registered customers</p>
         </div>
-        <Button onClick={openNew} className="bg-green-600 hover:bg-green-700 gap-2"><Plus size={18} /> Add Customer</Button>
+        <Button onClick={openNew} className="gap-2 bg-green-600 hover:bg-green-700"><Plus size={16} /> Add Customer</Button>
       </div>
 
       <Input placeholder="Search customers..." value={search} onChange={e => setSearch(e.target.value)} />

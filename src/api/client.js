@@ -701,6 +701,16 @@ const shop = {
     return data;
   },
 
+  /**
+   * Owner: remove a shop or branch with its records. The main shop is the
+   * account itself, so the database refuses that one (public.delete_shop).
+   */
+  async remove(shopId) {
+    const { data, error } = await supabase.rpc("delete_shop", { p_id: shopId });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
   /** Work in another of the owner's shops. */
   async switchTo(shopId) {
     const userId = await currentUserId();

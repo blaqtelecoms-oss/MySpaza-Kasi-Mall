@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  LayoutDashboard, ShoppingCart, Package, TrendingUp, DollarSign,
-  Users, Truck, BookOpen, BarChart2, Settings, Menu, X, Bell,
-  Building2, GraduationCap, Bot, CreditCard, ChevronDown, ChevronRight,
-  Banknote, UserCheck, Calculator, RefreshCw, Wallet, ArrowLeft, TrendingDown, Receipt,
-  MailSearch, LogOut, PackagePlus
-} from "lucide-react";
+  SquaresFour, ShoppingCart, Package, TrendUp, CurrencyDollar, UsersThree, Truck,
+  ChartBar, GearSix, List, X, Bank, GraduationCap, Robot, CreditCard,
+  Money, UserCheck, Calculator, ArrowsClockwise, Wallet, ArrowLeft, TrendDown, Receipt,
+  EnvelopeSimple, SignOut, StackPlus,
+} from "@phosphor-icons/react";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useAuth } from "@/lib/AuthContext";
 import { queryClientInstance } from "@/lib/query-client";
@@ -18,29 +18,29 @@ import ShopSwitcher from "@/components/shop/ShopSwitcher";
 // sees everything, an employee only the modules the owner granted. `ownerOnly`
 // screens manage the shop itself and are never shown to employees.
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: SquaresFour, label: "Dashboard", path: "/" },
   { icon: ShoppingCart, label: "Point of Sale", path: "/pos", module: "pos" },
   { icon: Package, label: "Inventory", path: "/inventory", module: "inventory" },
-  { icon: Banknote, label: "Cash Up", path: "/cashup", module: "cashup" },
+  { icon: Money, label: "Cash Up", path: "/cashup", module: "cashup" },
   { icon: Receipt, label: "Daily Sales", path: "/daily-sales", module: "daily_sales" },
-  { icon: Building2, label: "Banking", path: "/banking", module: "banking" },
-  { icon: TrendingUp, label: "Accounting", path: "/accounting", module: "accounting" },
-  { icon: DollarSign, label: "Expenses", path: "/expenses", module: "expenses" },
+  { icon: Bank, label: "Banking", path: "/banking", module: "banking" },
+  { icon: TrendUp, label: "Accounting", path: "/accounting", module: "accounting" },
+  { icon: CurrencyDollar, label: "Expenses", path: "/expenses", module: "expenses" },
   { icon: Truck, label: "Suppliers", path: "/suppliers", module: "suppliers" },
-  { icon: Users, label: "Customers", path: "/customers", module: "customers" },
-  { icon: TrendingDown, label: "Debtors Control", path: "/debtors", module: "debtors" },
+  { icon: UsersThree, label: "Customers", path: "/customers", module: "customers" },
+  { icon: TrendDown, label: "Debtors Control", path: "/debtors", module: "debtors" },
   { icon: UserCheck, label: "Employees", path: "/employees", ownerOnly: true },
-  { icon: BarChart2, label: "Reports", path: "/reports", module: "reports" },
+  { icon: ChartBar, label: "Reports", path: "/reports", module: "reports" },
   { icon: GraduationCap, label: "Academy", path: "/academy", module: "academy" },
   { icon: Calculator, label: "Calculators", path: "/calculators", module: "calculators" },
-  { icon: Bot, label: "Spaza Coach", path: "/coach", module: "coach" },
+  { icon: Robot, label: "Spaza Coach", path: "/coach", module: "coach" },
   { icon: CreditCard, label: "Funding Hub", path: "/funding", module: "funding" },
   { icon: Wallet, label: "MySpaza Card", path: "/myspaza-card", module: "myspaza_card" },
-  { icon: Settings, label: "Settings", path: "/settings", ownerOnly: true },
+  { icon: GearSix, label: "Settings", path: "/settings", ownerOnly: true },
   // Operator-only: the Resend delivery log for signup and account emails.
-  { icon: MailSearch, label: "Email Log", path: "/admin/email-events", adminOnly: true },
+  { icon: EnvelopeSimple, label: "Email Log", path: "/admin/email-events", adminOnly: true },
   // Operator-only: copy every shop's catalogue into one account and hand out a plan.
-  { icon: PackagePlus, label: "Catalogue Copy", path: "/admin/product-copy", adminOnly: true },
+  { icon: StackPlus, label: "Catalogue Copy", path: "/admin/product-copy", adminOnly: true },
 ];
 
 export default function Layout() {
@@ -131,13 +131,13 @@ export default function Layout() {
               title="Refresh data"
               className="p-2 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors"
             >
-              <RefreshCw size={18} className={btnRefreshing ? "animate-spin" : ""} />
+              <ArrowsClockwise size={18} weight="bold" className={btnRefreshing ? "animate-spin" : ""} />
             </button>
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden text-white"
             >
-              <X size={20} />
+              <X size={18} weight="bold" />
             </button>
           </div>
         </div>
@@ -162,7 +162,7 @@ export default function Layout() {
                     : "text-white/70 hover:bg-white/10"
                 }`}
               >
-                <Icon size={18} strokeWidth={1.9} className="shrink-0" />
+                <Icon size={19} weight={isActive ? "fill" : "duotone"} className="shrink-0" />
                 <span className="text-sm truncate">{item.label}</span>
               </Link>
             );
@@ -191,14 +191,15 @@ export default function Layout() {
                 onClick={() => navigate(-1)}
                 className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                <ArrowLeft size={22} className="text-gray-600 dark:text-gray-300" />
+                <ArrowLeft size={20} weight="bold" className="text-gray-600 dark:text-gray-300" />
               </button>
             )}
             <button
               onClick={() => setSidebarOpen(true)}
+              aria-label="Open menu"
               className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
             >
-              <Menu size={22} className="text-gray-600 dark:text-gray-300" />
+              <List size={22} weight="bold" className="text-gray-600 dark:text-gray-300" />
             </button>
             <div className="hidden sm:block">
               <h2 className="font-semibold text-gray-800 dark:text-gray-100">
@@ -211,10 +212,7 @@ export default function Layout() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
-              <Bell size={20} className="text-gray-600 dark:text-gray-300" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <NotificationBell />
             <div className="relative" ref={profileRef}>
               <button
                 type="button"
@@ -254,7 +252,7 @@ export default function Layout() {
                     onClick={() => setProfileOpen(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
-                    <Settings size={16} />
+                    <GearSix size={16} weight="duotone" />
                     Settings
                   </Link>
                   <button
@@ -263,7 +261,7 @@ export default function Layout() {
                     disabled={signingOut}
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
                   >
-                    <LogOut size={16} />
+                    <SignOut size={16} weight="bold" />
                     {signingOut ? "Signing out…" : "Sign out"}
                   </button>
                 </div>
@@ -287,8 +285,9 @@ export default function Layout() {
               className="absolute top-0 left-0 right-0 flex items-center justify-center z-10 pointer-events-none"
               style={{ height: `${pullDistance}px`, opacity: indicatorOpacity }}
             >
-              <RefreshCw
+              <ArrowsClockwise
                 size={24}
+                weight="bold"
                 className="text-foreground"
                 style={{
                   transform: `rotate(${indicatorRotation})`,
@@ -317,7 +316,7 @@ export default function Layout() {
       {/* Mobile Bottom Tab Bar */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-stretch h-16" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {[
-          { icon: LayoutDashboard, label: "Home", path: "/" },
+          { icon: SquaresFour, label: "Home", path: "/" },
           { icon: ShoppingCart, label: "POS", path: "/pos", module: "pos" },
           { icon: Package, label: "Stock", path: "/inventory", module: "inventory" },
           { icon: Wallet, label: "Card", path: "/myspaza-card", module: "myspaza_card" },
@@ -330,7 +329,7 @@ export default function Layout() {
               to={t.path}
               className={`flex flex-col items-center justify-center flex-1 gap-0.5 ${active ? "text-[#0D0D0D] dark:text-[#FFD426]" : "text-gray-500 dark:text-gray-400"}`}
             >
-              <Icon size={22} />
+              <Icon size={22} weight={active ? "fill" : "duotone"} />
               <span className="text-[10px] font-medium">{t.label}</span>
             </Link>
           );
@@ -339,7 +338,7 @@ export default function Layout() {
           onClick={() => setSidebarOpen(true)}
           className="flex flex-col items-center justify-center flex-1 gap-0.5 text-gray-500 dark:text-gray-400"
         >
-          <Menu size={22} />
+          <List size={22} weight="duotone" />
           <span className="text-[10px] font-medium">More</span>
         </button>
       </nav>
