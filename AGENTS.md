@@ -384,6 +384,14 @@ preview supplies has to exist there explicitly:
 - Google auth is enabled; the Google Cloud OAuth client needs
   `https://<project-ref>.supabase.co/auth/v1/callback` as an authorised redirect
   URI. The client id/secret live only in Supabase, never in this repo.
+- Keep every secret *value* out of the repo, including in docs: the project URL
+  (the `VITE_SUPABASE_URL` value), the project ref, keys and tokens. The
+  deployment's exposed-secrets check fails the build when one appears in a
+  committed file — PR #5 did that by writing the real project URL into
+  `README.md`. Write `<project-ref>` in prose and look the value up in the
+  dashboard. The same applies to CLI credentials: `docker/base44-cli/auth.json`
+  (a Base44 CLI access token) was deleted in `46bc47e` but is still readable in
+  git history, so that token must be revoked rather than relied on being gone.
 
 ## Email (Resend)
 
