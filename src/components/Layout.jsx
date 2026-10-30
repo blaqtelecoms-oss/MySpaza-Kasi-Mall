@@ -325,7 +325,7 @@ export default function Layout() {
                 to={t.path}
                 aria-current={active ? "page" : undefined}
                 className={`group flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-1.5 transition-transform duration-150 active:scale-[0.96] ${
-                  active ? "text-[#0D0D0D] dark:text-[#FFD426]" : "text-gray-500 hover:text-[#0D0D0D] dark:text-gray-400 dark:hover:text-white"
+                  active ? "text-[#0D0D0D] dark:text-[#FFD426]" : "text-[#0D0D0D] hover:text-black dark:text-gray-200 dark:hover:text-white"
                 }`}
               >
                 <span
@@ -335,7 +335,7 @@ export default function Layout() {
                       : "bg-transparent"
                   }`}
                 >
-                  <Icon size={18} weight={active ? "fill" : "duotone"} />
+                  <Icon size={19} weight={active ? "fill" : "bold"} />
                 </span>
                 <span className={`text-[10px] leading-none tracking-[0.01em] ${active ? "font-semibold" : "font-medium"}`}>
                   {t.label}
@@ -346,10 +346,10 @@ export default function Layout() {
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            className="flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-1.5 text-gray-500 transition-transform duration-150 hover:text-[#0D0D0D] active:scale-[0.96] dark:text-gray-400 dark:hover:text-white"
+            className="flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-1.5 text-[#0D0D0D] transition-transform duration-150 hover:text-black active:scale-[0.96] dark:text-gray-200 dark:hover:text-white"
           >
             <span className="flex h-[30px] w-9 items-center justify-center rounded-[11px]">
-              <List size={18} weight="duotone" />
+              <List size={19} weight="bold" />
             </span>
             <span className="text-[10px] font-medium leading-none tracking-[0.01em]">More</span>
           </button>
