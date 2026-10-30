@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import OnboardingGate from '@/components/OnboardingGate';
 import { RequireOwner, RequireModule, RequirePlan } from '@/components/RequireAccess';
 import { SubscriptionProvider } from '@/lib/SubscriptionContext';
 import Layout from '@/components/Layout';
@@ -42,6 +43,7 @@ const EmailEvents = lazy(() => import('@/pages/EmailEvents'));
 const AdminProductCopy = lazy(() => import('@/pages/AdminProductCopy'));
 const AcceptInvite = lazy(() => import('@/pages/AcceptInvite'));
 const AcceptGroupInvite = lazy(() => import('@/pages/AcceptGroupInvite'));
+const Onboarding = lazy(() => import('@/pages/Onboarding'));
 
 const PageLoader = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -97,7 +99,10 @@ const AuthenticatedApp = () => {
         <Route path="/invite/:token" element={<AcceptInvite />} />
         <Route path="/invite/group/:token" element={<AcceptGroupInvite />} />
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
-          <Route element={<Layout />}>
+          {/* First-run setup, outside the app shell: no sidebar, no menu to
+              wander off into before the plan step is done. */}
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route element={<OnboardingGate><Layout /></OnboardingGate>}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/pos" element={<RequireModule module="pos"><POS /></RequireModule>} />
             <Route path="/inventory" element={<RequireModule module="inventory"><Inventory /></RequireModule>} />

@@ -6,6 +6,7 @@ export const SHOP_LOGO_BUCKET = "shop-logos";
 export const DEFAULT_SHOP_SETTINGS = {
   business: {
     name: "My Spaza Shop",
+    type: "",
     owner: "",
     phone: "",
     email: "",

@@ -157,12 +157,23 @@ npm run build
   URI must be an *Authorised redirect URI* on the Google Cloud OAuth client whose
   id is stored in the Supabase Google provider. Without it Google answers
   "Error 400: redirect_uri_mismatch" before the user ever reaches the app, and no
-  app-side change can fix it. For this project (ref `udzqtqgscercylqwrkkj`,
-  client `102110764491-ura2q3d9rccuinu2d9ctb7ea53j0h0kd`) add
-  `https://udzqtqgscercylqwrkkj.supabase.co/auth/v1/callback` under Google Cloud
-  Console → APIs & Services → Credentials → OAuth 2.0 Client IDs. The app's own
-  return URL (`window.location.origin` + the `?next=` path) is a separate value
-  and only has to be in Supabase's *Redirect URLs* allow list.
+  app-side change can fix it. Read the project ref from the Supabase project URL
+  and the client id from Google Cloud Console → APIs & Services → Credentials →
+  OAuth 2.0 Client IDs, then add that client's
+  `https://<project-ref>.supabase.co/auth/v1/callback` as an *Authorised redirect
+  URI*. Neither value belongs in this repository: the project URL is the value of
+  the `VITE_SUPABASE_URL` secret, so committing it trips the deploy's
+  exposed-secrets check and fails the build. The app's own return URL
+  (`window.location.origin` + the `?next=` path) is a separate value and only has
+  to be in Supabase's *Redirect URLs* allow list.
+- **First-run onboarding** — a new account lands on `/onboarding` before the app:
+  the business profile (the same `shop_settings.business` details Settings
+  edits), then a required plan choice. Free finishes there; Premium and Ultra
+  open the normal Yoco checkout. Completion is stored on the account
+  (`profiles.onboarded_at`, migration `20261105_shop_onboarding.sql`), so it
+  survives reloads and follows the person to another device; accounts that
+  existed before the flow shipped are grandfathered. Employees invited to a shop
+  skip it — they join a shop that is already set up.
 - **Profiles** — `public.profiles` mirrors each auth user (`id`, `email`,
   `full_name`, `role`). A row is created automatically on first sign-in when it
   is missing.

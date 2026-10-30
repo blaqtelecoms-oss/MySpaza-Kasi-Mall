@@ -199,6 +199,35 @@ client matrix is `src/lib/plans.js`.
   (the sub must be a real uuid — `auth.uid()` casts it), then call
   `shop_module_level` at each tier.
 
+## First-run onboarding
+
+`supabase/migrations/20261105_shop_onboarding.sql` adds the marker.
+
+- A new account goes through `/onboarding` before any app screen: the business
+  profile first, then a **required** plan choice (Free, Premium or Ultra). There
+  is deliberately no skip.
+- The marker is `public.profiles.onboarded_at`, not a column on a shop: onboarding
+  belongs to the account, so a branch switch or a second device keeps it. The
+  migration grandsons accounts that existed before the flow shipped by joining
+  `auth.users.created_at`, so re-running it never stamps a newer account.
+- `src/components/OnboardingGate.jsx` wraps the app shell in `App.jsx` and
+  redirects with the current `search` preserved — that is what keeps a returning
+  Yoco `?yoco=…&payment=…` confirmable while the flow is still open. The
+  `/onboarding` route sits outside `Layout`. Employees (`shop.isOwner` false)
+  never see the flow: they join a shop that already exists.
+- Step 1 saves through `api.shop.saveBusinessProfile`, which writes the same
+  `shop_settings.business` blob Settings edits and renames the primary shop (it
+  was seeded with the account's name). Step 2 reuses `SubscriptionProvider`:
+  Free calls `completeOnboarding`, Premium/Ultra open the existing Yoco
+  `openCheckout`, and the page finishes itself once the shop's plan stops being
+  Free (the payment-confirmation effect in `SubscriptionContext` drives that).
+- `business.type` (shop type) is collected here; the rest of the fields already
+  existed in `DEFAULT_SHOP_SETTINGS`.
+- Verify with a throwaway auth user (service role, `email_confirm: true`): sign
+  in through the login form, drive the two steps, then check `profiles.onboarded_at`
+  and `shop_settings.business`, and delete the user plus its `shop_settings` /
+  `shop` rows afterwards.
+
 ## Shops and branches
 
 `supabase/migrations/20261030_shop_branches.sql` adds the shop record and the
@@ -384,6 +413,14 @@ preview supplies has to exist there explicitly:
 - Google auth is enabled; the Google Cloud OAuth client needs
   `https://<project-ref>.supabase.co/auth/v1/callback` as an authorised redirect
   URI. The client id/secret live only in Supabase, never in this repo.
+- Keep every secret *value* out of the repo, including in docs: the project URL
+  (the `VITE_SUPABASE_URL` value), the project ref, keys and tokens. The
+  deployment's exposed-secrets check fails the build when one appears in a
+  committed file — PR #5 did that by writing the real project URL into
+  `README.md`. Write `<project-ref>` in prose and look the value up in the
+  dashboard. The same applies to CLI credentials: `docker/base44-cli/auth.json`
+  (a Base44 CLI access token) was deleted in `46bc47e` but is still readable in
+  git history, so that token must be revoked rather than relied on being gone.
 
 ## Email (Resend)
 

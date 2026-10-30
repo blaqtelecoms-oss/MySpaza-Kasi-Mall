@@ -617,14 +617,15 @@ const shop = {
     let shopName = shopRow?.name?.trim() || shopProfile?.business?.name?.trim() || null;
     const shopLogo = shopProfile?.logo_url || "";
 
-    if (!shopName) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name,email")
-        .eq("id", shopId)
-        .maybeSingle();
-      shopName = profile?.full_name || profile?.email || null;
-    }
+    // The account row carries the welcome-flow marker. Onboarding belongs to the
+    // account, so switching to a branch keeps it.
+    const { data: account } = await supabase
+      .from("profiles")
+      .select("full_name,email,onboarded_at")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (!shopName) shopName = account?.full_name || account?.email || null;
 
     // The plan belongs to the owner, so every branch resolves the same one.
     // `shop_billing` handles that lookup (and works for employees too).
@@ -658,6 +659,9 @@ const shop = {
       shopId,
       shopName,
       shopLogo,
+      // The saved business profile (prefills onboarding and Settings).
+      business: shopProfile?.business || {},
+      onboardedAt: account?.onboarded_at || null,
       shops: shops.map((row) => ({
         id: row.id,
         name: row.name,
@@ -728,6 +732,60 @@ const shop = {
     const { data, error } = await supabase.rpc("set_shop_plan", { p_plan: planKey });
     if (error) throw new Error(error.message);
     return data;
+  },
+
+  /**
+   * Onboarding step 1: keep the business details the owner just entered. They
+   * live in the same `shop_settings.business` blob the Settings screen reads.
+   */
+  async saveBusinessProfile(business) {
+    const userId = await currentUserId();
+    if (!userId) throw new Error("Sign in to save your business details.");
+    const now = new Date().toISOString();
+
+    const { data: existing, error: readError } = await supabase
+      .from("shop_settings")
+      .select("id,business")
+      .eq("created_by_id", userId)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+
+    const merged = { ...(existing?.business || {}), ...business };
+    const write = existing?.id
+      ? supabase
+          .from("shop_settings")
+          .update({ business: merged, updated_date: now })
+          .eq("id", existing.id)
+      : supabase.from("shop_settings").insert({
+          id: newId(),
+          created_by_id: userId,
+          business: merged,
+          receipt: {},
+          updated_date: now,
+        });
+    const { error } = await write;
+    if (error) throw new Error(error.message);
+
+    // The primary shop was seeded with the account's name; give it the shop's.
+    const name = business?.name?.trim();
+    if (name) await supabase.rpc("rename_shop", { p_id: userId, p_name: name });
+
+    resetShopCache();
+    return merged;
+  },
+
+  /** Onboarding finished (a plan was chosen), so the flow never runs again. */
+  async completeOnboarding() {
+    const userId = await currentUserId();
+    if (!userId) throw new Error("Sign in to finish setting up.");
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ onboarded_at: new Date().toISOString() })
+      .eq("id", userId)
+      .select("onboarded_at")
+      .single();
+    if (error) throw new Error(error.message);
+    return data?.onboarded_at || null;
   },
 
   /** Ask the email service to create the invitation and send it with Resend. */
