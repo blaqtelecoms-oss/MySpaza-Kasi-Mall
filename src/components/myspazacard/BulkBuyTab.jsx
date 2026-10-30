@@ -98,21 +98,27 @@ export default function BulkBuyTab() {
 
               <div className="flex items-center justify-between mt-3">
                 <span className="text-xs text-gray-600">{o.member_count} / {o.max_members || "∞"} members</span>
-                <div className="flex gap-1">
-                  {o.status === "open" && (
-                    <Button size="sm" variant="outline" className="text-green-700 border-green-200 h-8" onClick={() => setJoinOrder(o)}>
-                      <UserPlus size={14} /> Join
-                    </Button>
+                <div className="flex items-center gap-1">
+                  {o.invited ? (
+                    <Badge variant="outline" className="text-[10px]">member</Badge>
+                  ) : (
+                    <>
+                      {o.status === "open" && (
+                        <Button size="sm" variant="outline" className="text-green-700 border-green-200 h-8" onClick={() => setJoinOrder(o)}>
+                          <UserPlus size={14} /> Join
+                        </Button>
+                      )}
+                      <button
+                        onClick={() => { setEditOrder(o); setModal(true); }}
+                        aria-label={`Edit ${o.title}`}
+                      >
+                        <Pencil size={15} className="text-gray-400 hover:text-gray-600" />
+                      </button>
+                      <button onClick={() => setConfirmOrder(o)} aria-label={`Remove ${o.title}`}>
+                        <Trash2 size={15} className="text-red-400 hover:text-red-600" />
+                      </button>
+                    </>
                   )}
-                  <button
-                    onClick={() => { setEditOrder(o); setModal(true); }}
-                    aria-label={`Edit ${o.title}`}
-                  >
-                    <Pencil size={15} className="text-gray-400 hover:text-gray-600" />
-                  </button>
-                  <button onClick={() => setConfirmOrder(o)} aria-label={`Remove ${o.title}`}>
-                    <Trash2 size={15} className="text-red-400 hover:text-red-600" />
-                  </button>
                 </div>
               </div>
 
@@ -133,7 +139,7 @@ export default function BulkBuyTab() {
                 </div>
               )}
 
-              <GroupInvites groupKind="bulk_buy" groupId={o.id} groupName={o.title} />
+              {!o.invited && <GroupInvites groupKind="bulk_buy" groupId={o.id} groupName={o.title} />}
             </div>
           ))}
         </div>

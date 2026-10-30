@@ -5,12 +5,12 @@
   "secrets": [
     {
       "name": "VITE_SUPABASE_URL",
-      "description": "Supabase project URL the app reads and signs users in against.",
+      "description": "Supabase project URL the app reads and signs users in against. Until it is supplied, .env.base44-defaults provides a fake value so the shell still renders, but sign-in and data fail.",
       "requiredAtBoot": true
     },
     {
       "name": "VITE_SUPABASE_ANON_KEY",
-      "description": "Supabase anon/publishable key used by the browser client (protected by row level security).",
+      "description": "Supabase anon/publishable key used by the browser client (protected by row level security). Until it is supplied, .env.base44-defaults provides a fake value so the shell still renders, but sign-in and data fail.",
       "requiredAtBoot": true
     },
     {

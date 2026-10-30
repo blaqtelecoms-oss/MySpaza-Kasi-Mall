@@ -39,6 +39,7 @@ const FundingHub = lazy(() => import('@/pages/FundingHub'));
 const MySpazaCard = lazy(() => import('@/pages/MySpazaCard'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const EmailEvents = lazy(() => import('@/pages/EmailEvents'));
+const AdminProductCopy = lazy(() => import('@/pages/AdminProductCopy'));
 const AcceptInvite = lazy(() => import('@/pages/AcceptInvite'));
 const AcceptGroupInvite = lazy(() => import('@/pages/AcceptGroupInvite'));
 
@@ -119,6 +120,7 @@ const AuthenticatedApp = () => {
             <Route path="/myspaza-card" element={<RequireModule module="myspaza_card"><MySpazaCard /></RequireModule>} />
             <Route path="/settings" element={<RequireOwner><Settings /></RequireOwner>} />
             <Route path="/admin/email-events" element={<EmailEvents />} />
+            <Route path="/admin/product-copy" element={<AdminProductCopy />} />
           </Route>
         </Route>
         <Route path="*" element={<PageNotFound />} />

@@ -143,6 +143,20 @@ still `stockfell_account` / `StockfellAccount`, so nothing migrates.
 - Pending invitations are read from `group_invite` through the entity layer
   (`GroupInvite`), scoped by the owner policy `public.is_shop_owner(shop_id)` so
   branches work too.
+- **An invited member sees the group.** The group row keeps the inviting shop's
+  `created_by_id`, and the member is neither that shop's owner nor its employee,
+  so RLS and the client's branch scope both hid the row from them.
+  `supabase/migrations/20261103_group_member_visibility.sql` adds
+  `my_group_memberships(p_kind)` (`security definer`, returns only rows whose
+  `members` array carries the caller's own address via
+  `jsonb_has_member_email`), and `client.js` merges its answer into
+  `StockfellAccount` / `SavingsGroup` / `BulkBuy` `list()`, marking those rows
+  `invited`. The screens use that flag to drop owner-only controls (edit,
+  manage members, invite, deposit/withdraw, delete) on a group the person was
+  invited to. RLS is untouched: a member still cannot read or write these
+  tables directly — never fix a visibility gap by widening a table policy.
+  Members are matched by `email`, so anything that adds a member by hand must
+  set it (`GroupMembersDialog` does).
 - Adding an endpoint means three edits: `server/index.js` routes,
   `netlify/functions/api.mjs` routes (the public site), and the client call.
 
@@ -227,6 +241,46 @@ plan's shop allowance.
   one branch is absent in the other, and delete the user plus its `shop` /
   `shop_settings` / `shop_subscription` / data rows afterwards.
 
+## Operator tooling (catalogue copy + plan grants)
+
+`supabase/migrations/20261102_admin_product_copy_and_ultra.sql` adds the admin
+helpers; the screen is `/admin/product-copy` ("Catalogue Copy" in the sidebar,
+`role = 'admin'` only).
+
+- Every function re-checks `public.is_admin()` and is `security definer`, so RLS
+  is unchanged and a non-operator caller gets a `42501` refusal. The screen is
+  convenience, not the access control.
+- `admin_target_shop(email)` resolves an account to the shop its rows belong to:
+  the shop an employee works in, otherwise the account id (the primary shop keeps
+  that id). It falls back to `auth.users` when the account has never signed in,
+  so a brand-new invitee can be prepared before their first login.
+- `admin_copy_products(email)` copies **every** product from every other shop,
+  with all columns except `id`/`created_date`/`updated_date`/`created_by_id` — so
+  `image_url`, prices, cost and stock travel with the row. `product.id` is `text`
+  with **no default**, so the copy generates a fresh 24-character hex id per row
+  (a straight column copy fails with `null value in column "id"`). It never
+  touches the source rows and never copies the account's own catalogue.
+- Re-running is safe: `product_copy_log (source_product_id, target_shop)` records
+  what landed, so a retry copies nothing. Rows that fail (e.g. a unique
+  constraint) are counted and the first five errors returned instead of aborting
+  the whole run.
+- `admin_grant_ultra(email, max_shops)` upserts `shop_subscription` with
+  `plan = 'ultra'`, clears any pending plan and sets `current_period_end = null`
+  — Ultra with no expiry. The store cap lives in the new
+  `shop_subscription.max_shops` column, which `public.shop_store_limit()` reads
+  ahead of the plan's number; `create_shop()` enforces that value, so a capped
+  Ultra account really cannot add a fourth store. `shop_billing()` reports
+  `max_shops`, and `client.js` prefers it over `SHOP_LIMITS`, so the shop switcher
+  and the plan panel show the same number the database enforces.
+- Verify the SQL without a browser by replaying the migrations into a scratch
+  Postgres with `auth`/`storage`/`extensions` shims (see the sandbox note below).
+  Assert: non-admin refusal, copy counts and image/price fidelity, a second run
+  copying zero, the 4th `create_shop` raising, and `shop_billing().max_shops`.
+- Replay order quirk: `20261028_shop_employees.sql` needs `shop_settings`, which
+  `20261028_shop_logo_and_settings.sql` creates, so run the logo migration first
+  when applying the set by hand. The imported tables (`product`, `sale`, …) and
+  `profiles` are not in any migration — create them before replaying.
+
 ## Sandbox runtime (`docker-compose.base44.yml`)
 
 `docker compose -f docker-compose.base44.yml up -d` runs two services.
@@ -237,10 +291,21 @@ plan's shop allowance.
   checkout, so edits hot-reload. Host port `3000` maps to Vite's `:5173`.
 - Supabase credentials come from the platform env file `/run/base44/app.env`
   (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). They are never committed.
+- `.env.base44-defaults` is listed **before** `/run/base44/app.env` and holds
+  fake, valid-looking Supabase values so a sandbox with no credentials still
+  boots and renders the sign-in screen instead of a blank page
+  (`src/api/supabase.js` throws without them). They are placeholders only:
+  sign-in, data, uploads and email fail until the real project URL and anon key
+  are added as secrets. Because `app.env` is listed last, real values win.
 - `BASE44_PREVIEW_MODE=1` makes `vite.config.js` bind the dev server to
   `0.0.0.0` and accept the preview host (`.<BASE44_SANDBOX_HOST_DOMAIN>`, e.g.
   `3000-<sandbox id>.e2b.app`) so the preview proxy can reach it. Unset,
   `npm run dev` keeps its default localhost binding and host checks.
+- `CHOKIDAR_USEPOLLING=true` (with `CHOKIDAR_INTERVAL=300`): inotify events do
+  not reach the bind-mounted checkout, so without polling Vite kept serving the
+  first transform of a file and a reload still showed stale code. If an edit
+  seems to vanish, confirm the dev server serves it:
+  `curl -s localhost:3000/src/App.jsx | grep <new-token>`.
 - The app talks to Supabase directly from the browser; the only local backend
   is the email service.
 
@@ -254,6 +319,12 @@ plan's shop allowance.
 - Webhooks are called by third parties, so they target the api service's own
   port host, `https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/...`, not the Vite
   dev server.
+- If the api service is not running, `/api/*` through the Vite proxy answers a
+  bare 5xx with no JSON body — that is what produced the "Invitation failed
+  (500)" toast. `docker compose -f docker-compose.base44.yml ps` shows whether
+  it is up (`docker compose ... start api` brings it back), and since then
+  `client.js` turns that bodyless 5xx into "The invitation service is
+  unavailable right now." so the cause is readable.
 
 ## Public deployment (Netlify, https://myspaza-app.co.za)
 
@@ -304,9 +375,15 @@ preview supplies has to exist there explicitly:
   "email rate limit exceeded" even though the hook works. It is a per-project
   setting (Auth → Rate Limits, or `PATCH /v1/projects/{ref}/config/auth`); this
   project runs at 200 per hour (Resend's plan limits still apply below it).
-- The hook URI points at the sandbox host `https://8000-$BASE44_PUBLIC_HOST_SUFFIX/...`,
-  so it must be pointed at the real domain on deploy (and re-pointed if the
-  sandbox is recreated).
+- The hook URI points at the **deployed** endpoint
+  `https://myspaza-app.co.za/api/hooks/supabase/send-email`, never at a sandbox
+  host: the sandbox public host rotates, and a stale URI there makes every
+  signup fail with `500 unexpected_failure "Service currently unavailable due to
+  hook"` (the account is not created). The project config is readable and
+  editable with `SUPABASE_ACCESS_TOKEN` from `/run/base44/app.env`
+  (`GET`/`PATCH https://api.supabase.com/v1/projects/<ref>/config/auth`,
+  field `hook_send_email_uri`). The deployed route accepts the same
+  `SUPABASE_SEND_EMAIL_HOOK_SECRET` the sandbox service uses.
 - `POST /api/webhooks/resend` stores every Resend event in `public.email_event`.
   `provider_event_id` (the Svix message id) is unique, so retries are idempotent.
 - Both routes verify the Standard Webhooks HMAC over the raw body

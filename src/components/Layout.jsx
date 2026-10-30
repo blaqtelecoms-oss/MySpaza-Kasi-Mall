@@ -6,7 +6,7 @@ import {
   Users, Truck, BookOpen, BarChart2, Settings, Menu, X, Bell,
   Building2, GraduationCap, Bot, CreditCard, ChevronDown, ChevronRight,
   Banknote, UserCheck, Calculator, RefreshCw, Wallet, ArrowLeft, TrendingDown, Receipt,
-  MailSearch, LogOut
+  MailSearch, LogOut, PackagePlus
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useAuth } from "@/lib/AuthContext";
@@ -39,6 +39,8 @@ const navItems = [
   { icon: Settings, label: "Settings", path: "/settings", ownerOnly: true },
   // Operator-only: the Resend delivery log for signup and account emails.
   { icon: MailSearch, label: "Email Log", path: "/admin/email-events", adminOnly: true },
+  // Operator-only: copy every shop's catalogue into one account and hand out a plan.
+  { icon: PackagePlus, label: "Catalogue Copy", path: "/admin/product-copy", adminOnly: true },
 ];
 
 export default function Layout() {
@@ -116,22 +118,12 @@ export default function Layout() {
         }`}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <img src="/brand/logo.png" alt="My Spaza" className="w-10 h-10 rounded-xl object-cover" />
-            <div className="min-w-0">
-              <h1 className="text-white font-bold text-lg leading-none tracking-tight">My Spaza</h1>
-              <p className="text-white/50 text-xs truncate max-w-[9.5rem]">
-                {shop?.shopName || "Business Manager"}
-              </p>
-              {shop && !shop.isOwner ? (
-                <p className="text-[#FFD426] text-[10px] font-semibold mt-0.5 tracking-wide uppercase truncate max-w-[9.5rem]">
-                  {shop.role} · employee
-                </p>
-              ) : (
-                <p className="text-[#FFD426] text-[10px] font-semibold mt-0.5 tracking-wide uppercase">Your neighbourhood. Your store.</p>
-              )}
-            </div>
+        <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <img src="/brand/logo.png" alt="MySpaza" className="w-8 h-8 shrink-0 rounded-lg object-cover" />
+            <h1 className="text-white font-bold text-lg leading-none tracking-tight truncate">
+              MySpaza
+            </h1>
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -231,7 +223,15 @@ export default function Layout() {
                 aria-expanded={profileOpen}
                 className="w-8 h-8 bg-[#0D0D0D] rounded-full flex items-center justify-center ring-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD426] hover:opacity-90 transition-opacity"
               >
-                <span className="text-white text-sm font-bold">{userInitial}</span>
+                {shop?.shopLogo ? (
+                  <img
+                    src={shop.shopLogo}
+                    alt={shop.shopName || "Shop logo"}
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="text-white text-sm font-bold">{userInitial}</span>
+                )}
               </button>
 
               {profileOpen && (

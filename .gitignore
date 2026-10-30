@@ -1,6 +1,8 @@
 #env
 .env
 .env.*
+# Committed development placeholders (not real secrets), see .env.base44-defaults
+!.env.base44-defaults
 
 # Logs
 /logs

@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { MobileSelect } from "@/components/ui/mobile-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/lib/AuthContext";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
@@ -49,6 +50,9 @@ export default function SettingsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInput = useRef(null);
   const { toast } = useToast();
+  // The sidebar and the profile button read the shop logo from the auth
+  // context, so a saved logo only appears there after the context reloads.
+  const { refreshShop } = useAuth();
   // The paywall's "Compare plans" opens this page at ?tab=billing.
   const [searchParams] = useSearchParams();
   const initialTab = ["billing", "shops"].includes(searchParams.get("tab"))
@@ -96,6 +100,7 @@ export default function SettingsPage() {
   const handleSave = async () => {
     try {
       await persistSettings();
+      await refreshShop();
       toast({ title: "Settings Saved", description: "Your settings have been saved successfully" });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -115,7 +120,8 @@ export default function SettingsPage() {
       const res = await api.integrations.Core.UploadPublicFile({ file, bucket: SHOP_LOGO_BUCKET });
       setLogoUrl(res.file_url);
       await persistSettings({ logoUrl: res.file_url });
-      toast({ title: "Logo uploaded", description: "It now appears on your receipts" });
+      await refreshShop();
+      toast({ title: "Logo uploaded", description: "It now appears on your receipts and in the sidebar" });
     } catch (err) {
       toast({ title: "Upload failed", description: err.message || "Could not upload the logo.", variant: "destructive" });
     } finally {

@@ -56,6 +56,20 @@ function unwrap({ data, error }) {
   return data;
 }
 
+/**
+ * Error text for a failed invitation call. The email service answers 5xx
+ * itself (`{ error }`), but a service that is restarting never answers at all:
+ * the proxy then returns a bare 5xx with no JSON, so say that plainly instead
+ * of surfacing "Invitation failed (500)".
+ */
+function inviteError(status, body) {
+  if (body?.error) return body.error;
+  if (status >= 500) {
+    return "The invitation service is unavailable right now. Please try again in a moment.";
+  }
+  return `Invitation failed (${status})`;
+}
+
 /** "-field" sorts newest-first (the app's convention), "field" ascending. */
 function readSort(sort) {
   const raw = (typeof sort === "string" && sort.trim()) || "-created_date";
@@ -133,6 +147,24 @@ const SHOP_SCOPED = new Set([
   "purchase_order", "sale", "savings_group", "shop_settings", "stock_adjustment",
   "stockfell_account", "supplier", "wholesaler", "wholesaler_discount",
 ]);
+
+// Groups stay the property of the shop that started them, so an invited member's
+// address lives only in the row's `members` array. Those rows are read through
+// `my_group_memberships()` (which answers for the signed-in address) and merged
+// into the list, marked `invited` so the screens keep owner actions off them.
+const GROUP_KINDS = {
+  stockfell_account: "stokvel",
+  savings_group: "savings_group",
+  bulk_buy: "bulk_buy",
+};
+
+async function invitedGroups(name) {
+  const kind = GROUP_KINDS[name];
+  if (!kind) return [];
+  const { data, error } = await supabase.rpc("my_group_memberships", { p_kind: kind });
+  if (error) throw new Error(error.message);
+  return (data || []).map((row) => ({ ...row, invited: true }));
+}
 
 // A shop is the owner's account (or one of its branches): rows an employee
 // writes belong to the shop they work in, not to the employee's own account.
@@ -228,7 +260,11 @@ function makeEntity(entity) {
     table: name,
 
     async list(sort, limit) {
-      return ordered(() => supabase.from(name).select("*"), await shopCriteria(), sort, limit);
+      const rows = await ordered(() => supabase.from(name).select("*"), await shopCriteria(), sort, limit);
+      const invited = await invitedGroups(name);
+      if (invited.length === 0) return rows;
+      const seen = new Set(rows.map((row) => row.id));
+      return [...rows, ...invited.filter((row) => !seen.has(row.id))];
     },
 
     async filter(criteria, sort, limit) {
@@ -571,15 +607,16 @@ const shop = {
     const shopId = active?.shop_id || (await currentShopId());
     const shopRow = shops.find((row) => row.id === shopId) || null;
 
-    let shopName = shopRow?.name?.trim() || null;
-    if (!shopName) {
-      const { data: settings } = await supabase
-        .from("shop_settings")
-        .select("business")
-        .eq("created_by_id", shopId)
-        .maybeSingle();
-      shopName = settings?.business?.name?.trim() || null;
-    }
+    // The active shop's saved profile also carries its logo, which the sidebar
+    // and the profile button show in place of a generic icon.
+    const { data: shopProfile } = await supabase
+      .from("shop_settings")
+      .select("business,logo_url")
+      .eq("created_by_id", shopId)
+      .maybeSingle();
+
+    let shopName = shopRow?.name?.trim() || shopProfile?.business?.name?.trim() || null;
+    const shopLogo = shopProfile?.logo_url || "";
 
     if (!shopName) {
       const { data: profile } = await supabase
@@ -614,11 +651,14 @@ const shop = {
     }
 
     const plan = billing?.plan || "free";
-    const limit = shopLimit(plan);
+    // A shop may carry its own store allowance (operator-granted), which wins
+    // over the plan's number — the same rule `public.shop_store_limit()` applies.
+    const limit = billing?.max_shops ?? shopLimit(plan);
 
     return {
       shopId,
       shopName,
+      shopLogo,
       shops: shops.map((row) => ({
         id: row.id,
         name: row.name,
@@ -698,7 +738,7 @@ const shop = {
       body: JSON.stringify({ email, fullName, monthlySalary, role, permissions, shopId }),
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || `Invitation failed (${response.status})`);
+    if (!response.ok) throw new Error(inviteError(response.status, body));
     return body;
   },
 
@@ -818,7 +858,7 @@ const groups = {
       body: JSON.stringify({ email, groupKind, groupId, shopId }),
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || `Invitation failed (${response.status})`);
+    if (!response.ok) throw new Error(inviteError(response.status, body));
     return body;
   },
 
@@ -850,7 +890,39 @@ const groups = {
   },
 };
 
-export const api = { entities, auth, integrations, shop, groups, billing };
+/**
+ * Operator-only tools (`profiles.role = 'admin'`): copy every shop's catalogue
+ * into one account and grant a plan with a store allowance. The database
+ * re-checks `public.is_admin()` inside each function, so hiding the screen is
+ * convenience, not the access control.
+ */
+const admin = {
+  /** Current plan, store allowance and catalogue counts for one account. */
+  async summary(email) {
+    const { data, error } = await supabase.rpc("admin_product_copy_summary", { p_email: email });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Copy every shop's products (images and prices included) into the account. */
+  async copyProducts(email) {
+    const { data, error } = await supabase.rpc("admin_copy_products", { p_email: email });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Grant Ultra with no expiry and a store allowance (3 by default). */
+  async grantUltra(email, maxShops = 3) {
+    const { data, error } = await supabase.rpc("admin_grant_ultra", {
+      p_email: email,
+      p_max_shops: maxShops,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+};
+
+export const api = { entities, auth, integrations, shop, groups, billing, admin };
 
 // Transparent offline caching + write queueing over the entity layer.
 installOfflineLayer(api);
