@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
 import { useSubscription } from "@/lib/SubscriptionContext";
 import SedfaBanner from "@/components/ads/SedfaBanner";
 import NewcastleLedBanner from "@/components/ads/NewcastleLedBanner";
@@ -15,32 +14,22 @@ const BANNERS = [
 
 export default function AdBanner() {
   const [index, setIndex] = useState(0);
-  const [dismissed, setDismissed] = useState(false);
   // Premium and Ultra are ad-free; only the Free plan shows sponsored banners.
   const { planInfo } = useSubscription();
 
   useEffect(() => {
-    if (dismissed) return;
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % BANNERS.length);
     }, 6000);
     return () => clearInterval(interval);
-  }, [dismissed]);
+  }, []);
 
   if (!planInfo.ads) return null;
-  if (dismissed) return null;
 
   const { Component } = BANNERS[index];
 
   return (
     <div className="relative">
-      <button
-        onClick={() => setDismissed(true)}
-        className="absolute top-1.5 right-1.5 z-10 p-1 rounded-full bg-white/30 hover:bg-white/50 transition"
-        aria-label="Dismiss"
-      >
-        <X size={12} className="text-white" />
-      </button>
       <Component />
       <div className="flex gap-1 mt-2 justify-center">
         {BANNERS.map((b, i) => (
