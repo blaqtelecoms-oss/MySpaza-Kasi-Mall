@@ -1,4 +1,4 @@
-import { Calendar, Clock, MapPin, Globe, Phone } from "lucide-react";
+import { Calendar, Clock, MapPin, Globe } from "lucide-react";
 
 export default function AmajubaBanner() {
   return (

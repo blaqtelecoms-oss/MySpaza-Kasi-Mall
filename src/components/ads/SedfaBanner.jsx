@@ -1,4 +1,4 @@
-import { Calendar, Clock, MapPin, Phone, Globe } from "lucide-react";
+import { Calendar, Clock, MapPin } from "lucide-react";
 
 export default function SedfaBanner() {
   return (

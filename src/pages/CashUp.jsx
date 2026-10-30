@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
-import { Banknote, CheckCircle, Plus, RefreshCw, AlertCircle, TrendingUp, Landmark, History } from "lucide-react";
+import {
+  Money, CheckCircle, WarningCircle, Bank, ClockCounterClockwise, Cards,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -156,37 +158,44 @@ export default function CashUp() {
   return (
     <div className="p-4 max-w-3xl mx-auto space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-foreground">Daily Cash Up</h1>
+            <h1 className="text-xl font-bold text-foreground sm:text-2xl">Daily Cash Up</h1>
             <QueryRefreshIndicator isFetching={salesQuery.isFetching || cashupsQuery.isFetching} hasData={cashups.length > 0 || todaySales.length > 0} />
           </div>
-          <p className="text-muted-foreground text-sm">{new Date().toLocaleDateString("en-ZA", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+          <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString("en-ZA", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
         </div>
-        {todayCashup && <Badge className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 px-3 py-1"><CheckCircle size={12} className="mr-1" />Completed</Badge>}
+        {todayCashup && <Badge className="shrink-0 bg-green-100 px-3 py-1 text-green-700 dark:bg-green-900/40 dark:text-green-300"><CheckCircle size={12} weight="fill" className="mr-1" />Completed</Badge>}
       </div>
 
       {/* Summary Row */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <Card className="bg-muted border-border">
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Total Transactions</p>
-            <p className="text-2xl font-bold text-foreground">{todaySales.filter(s => s.status === "completed").length}</p>
+          <CardContent className="p-2.5 text-center sm:p-3">
+            <Cards size={18} weight="duotone" className="mx-auto mb-1 text-slate-500" />
+            <p className="text-lg font-bold leading-tight text-foreground sm:text-2xl">{todaySales.filter(s => s.status === "completed").length}</p>
+            <p className="text-[11px] leading-tight text-muted-foreground sm:text-xs">Transactions</p>
           </CardContent>
         </Card>
         <Card className="bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900">
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-green-600 dark:text-green-400">Total Sales</p>
-            <p className="text-xl font-bold text-green-700 dark:text-green-400">{formatCurrency(totalSales)}</p>
+          <CardContent className="p-2.5 text-center sm:p-3">
+            <Money size={18} weight="duotone" className="mx-auto mb-1 text-green-700" />
+            <p className="text-sm font-bold leading-tight text-green-700 tabular-nums dark:text-green-400 sm:text-xl">{formatCurrency(totalSales)}</p>
+            <p className="text-[11px] leading-tight text-green-600 dark:text-green-400 sm:text-xs">Total Sales</p>
           </CardContent>
         </Card>
         <Card className={`border-2 ${Math.abs(cashDifference) > 10 ? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900" : "bg-muted border-border"}`}>
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Difference</p>
-            <p className={`text-xl font-bold ${cashDifference > 0 ? "text-green-600 dark:text-green-400" : cashDifference < 0 ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
+          <CardContent className="p-2.5 text-center sm:p-3">
+            <WarningCircle
+              size={18}
+              weight="duotone"
+              className={`mx-auto mb-1 ${Math.abs(cashDifference) > 10 ? "text-red-600" : "text-slate-400"}`}
+            />
+            <p className={`text-sm font-bold leading-tight tabular-nums sm:text-xl ${cashDifference > 0 ? "text-green-600 dark:text-green-400" : cashDifference < 0 ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
               {cashDifference >= 0 ? "+" : ""}{formatCurrency(cashDifference)}
             </p>
+            <p className="text-[11px] leading-tight text-muted-foreground sm:text-xs">Difference</p>
           </CardContent>
         </Card>
       </div>
@@ -194,7 +203,7 @@ export default function CashUp() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Sales Section */}
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Banknote size={18} className="text-foreground" /> Sales Breakdown</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Money size={18} weight="duotone" className="text-slate-600" /> Sales Breakdown</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {inputField("Opening Float", "opening_float")}
             {inputField("Cash Sales", "cash_sales")}
@@ -211,7 +220,7 @@ export default function CashUp() {
 
         {/* Cash Section */}
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Landmark size={18} className="text-foreground" /> Cash Reconciliation</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Bank size={18} weight="duotone" className="text-slate-600" /> Cash Reconciliation</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {inputField("Expenses Paid (Cash)", "expenses_paid")}
             {inputField("Cash Withdrawals", "cash_withdrawals")}
@@ -235,7 +244,7 @@ export default function CashUp() {
               </div>
               {Math.abs(cashDifference) > 10 && (
                 <p className="text-red-600 text-xs mt-1 flex items-center gap-1">
-                  <AlertCircle size={12} /> Large difference — please investigate
+                  <WarningCircle size={12} weight="bold" /> Large difference — please investigate
                 </p>
               )}
             </div>
@@ -251,7 +260,7 @@ export default function CashUp() {
             </div>
 
             <Button onClick={handleSubmit} disabled={saving} className="w-full bg-green-600 hover:bg-green-700 h-12 font-bold">
-              <CheckCircle size={18} className="mr-2" />
+              <CheckCircle size={18} weight="bold" className="mr-2" />
               {saving ? "Saving..." : todayCashup ? "Update Cash Up" : "Submit Cash Up"}
             </Button>
           </CardContent>
@@ -261,11 +270,11 @@ export default function CashUp() {
       {/* History */}
       {cashups.length > 0 && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><History size={18} className="text-foreground" /> Recent Cash Ups</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><ClockCounterClockwise size={18} weight="duotone" className="text-slate-600" /> Recent Cash Ups</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-2">
               {cashups.slice(0, 5).map(cu => (
-                <div key={cu.id} className="flex items-center justify-between p-3 bg-muted rounded-xl">
+                <div key={cu.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted p-3">
                   <div>
                     <p className="font-medium text-sm text-foreground">{cu.cashup_date}</p>
                     <p className="text-xs text-muted-foreground">{cu.cashier_name}</p>

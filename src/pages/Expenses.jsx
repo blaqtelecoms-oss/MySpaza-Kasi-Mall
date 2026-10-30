@@ -2,12 +2,11 @@ import { useState } from "react";
 import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
-import { Plus, Trash2, RefreshCw, Upload, Receipt, Fuel, Lightbulb, Droplet, Home, Bus, User, Sparkles, Lock, Wrench, Megaphone, Package, FileText } from "lucide-react";
+import { Plus, Trash2, RefreshCw, Receipt, Fuel, Lightbulb, Droplet, Home, Bus, User, Sparkles, Lock, Wrench, Megaphone, Package, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MobileSelect } from "@/components/ui/mobile-select";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -86,28 +85,28 @@ export default function Expenses() {
   return (
     <div className="p-4 max-w-4xl mx-auto space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-foreground">Expenses</h1>
+            <h1 className="text-xl font-bold text-foreground sm:text-2xl">Expenses</h1>
             <QueryRefreshIndicator isFetching={expensesQuery.isFetching} hasData={allExpenses.length > 0} />
           </div>
-          <p className="text-muted-foreground text-sm">Track all business expenses</p>
+          <p className="text-sm text-muted-foreground">Track all business expenses</p>
         </div>
-        <Button onClick={() => setModalOpen(true)} className="bg-green-600 hover:bg-green-700 gap-2">
-          <Plus size={18} /> Add Expense
+        <Button onClick={() => setModalOpen(true)} className="gap-2 bg-green-600 hover:bg-green-700">
+          <Plus size={16} /> Add Expense
         </Button>
       </div>
 
       {/* Month filter + total */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Label className="text-sm whitespace-nowrap">Month:</Label>
+          <Label className="whitespace-nowrap text-sm">Month:</Label>
           <Input type="month" value={filterMonth} onChange={e => setFilterMonth(e.target.value)} className="w-40" />
         </div>
         <div className="text-right">
           <p className="text-xs text-muted-foreground">Total Expenses</p>
-          <p className="text-2xl font-bold text-red-600">{formatCurrency(totalExpenses)}</p>
+          <p className="text-xl font-bold tabular-nums text-red-600 sm:text-2xl">{formatCurrency(totalExpenses)}</p>
         </div>
       </div>
 
@@ -165,17 +164,17 @@ export default function Expenses() {
               {expenses.map(e => {
                 const cat = EXPENSE_CATEGORIES.find(c => c.id === e.category);
                 return (
-                  <div key={e.id} className="flex items-center justify-between p-4 hover:bg-muted/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-xl flex items-center justify-center">
+                  <div key={e.id} className="flex items-center justify-between gap-2 p-3 hover:bg-muted/50 sm:p-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/40">
                         {cat?.icon || <FileText size={20} className="text-red-600 dark:text-red-400" />}
                       </div>
-                      <div>
-                        <p className="font-medium text-sm text-foreground">{e.description || cat?.label}</p>
-                        <p className="text-xs text-muted-foreground">{e.expense_date} · {e.payment_method}</p>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{e.description || cat?.label}</p>
+                        <p className="truncate text-xs text-muted-foreground">{e.expense_date} · {e.payment_method}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex shrink-0 items-center gap-1 sm:gap-3">
                       <p className="font-bold text-red-600">{formatCurrency(e.amount)}</p>
                       <button onClick={() => handleDelete(e)} className="p-2">
                         <Trash2 size={18} className="text-muted-foreground hover:text-red-500" />

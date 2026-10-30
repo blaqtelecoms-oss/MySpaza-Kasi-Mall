@@ -8,6 +8,9 @@ const TONES = {
   amber: "text-amber-600",
   slate: "text-slate-600",
   ink: "text-[#0D0D0D]",
+  red: "text-red-600",
+  green: "text-emerald-700",
+  blue: "text-sky-700",
 };
 
 const SIZES = {

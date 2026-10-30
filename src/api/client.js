@@ -495,15 +495,14 @@ const auth = {
     return { ok: true };
   },
 
-  loginWithProvider(provider, returnTo = "/") {
-    supabase.auth
-      .signInWithOAuth({
-        provider,
-        options: { redirectTo: authRedirect(returnTo) },
-      })
-      .catch(() => {
-        /* surfaced on the login screen by the browser redirect failing */
-      });
+  async loginWithProvider(provider, returnTo = "/") {
+    // On success the browser leaves for the provider, so an error here means
+    // the redirect never happened (provider not enabled, offline, ...).
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: authRedirect(returnTo) },
+    });
+    if (error) throw new Error(error.message);
   },
 
   async logout(redirectUrl) {
@@ -697,6 +696,16 @@ const shop = {
   /** Owner: rename a shop or branch. */
   async rename(shopId, name) {
     const { data, error } = await supabase.rpc("rename_shop", { p_id: shopId, p_name: name });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /**
+   * Owner: remove a shop or branch with its records. The main shop is the
+   * account itself, so the database refuses that one (public.delete_shop).
+   */
+  async remove(shopId) {
+    const { data, error } = await supabase.rpc("delete_shop", { p_id: shopId });
     if (error) throw new Error(error.message);
     return data;
   },

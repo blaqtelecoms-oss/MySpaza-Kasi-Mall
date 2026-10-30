@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { api } from "@/api/client";
-import { Send, Bot, RefreshCw, Lightbulb, TrendingUp } from "lucide-react";
+import { Send, Bot, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";

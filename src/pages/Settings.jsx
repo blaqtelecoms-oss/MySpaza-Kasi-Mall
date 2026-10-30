@@ -5,7 +5,7 @@ import { api } from "@/api/client";
 import BillingPanel from "@/components/billing/BillingPanel";
 import ShopsPanel from "@/components/billing/ShopsPanel";
 import { DEFAULT_SHOP_SETTINGS, SHOP_LOGO_BUCKET, toShopSettings } from "@/lib/shopSettings";
-import { Settings, Bell, Shield, Globe, Palette, Building2, Printer, Save, Trash2, Loader2, Upload } from "lucide-react";
+import { Bell, Shield, Building2, Printer, Save, Trash2, Loader2, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +44,7 @@ export default function SettingsPage() {
   const [security, setSecurity] = useState({ pinLogin: false, autoLock: true, lockTime: "5" });
   const [language, setLanguage] = useState("en");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [removeLogoOpen, setRemoveLogoOpen] = useState(false);
   const [saved, setSaved] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
   const [settingsId, setSettingsId] = useState(null);
@@ -53,17 +54,16 @@ export default function SettingsPage() {
   // The sidebar and the profile button read the shop logo from the auth
   // context, so a saved logo only appears there after the context reloads.
   const { refreshShop } = useAuth();
-  // The paywall's "Compare plans" opens this page at ?tab=billing.
+  // The paywall's "Compare plans" opens this page at ?tab=billing and the
+  // notification panel links to ?tab=notifications.
   const [searchParams] = useSearchParams();
-  const initialTab = ["billing", "shops"].includes(searchParams.get("tab"))
-    ? searchParams.get("tab")
-    : "business";
-  const [tab, setTab] = useState(initialTab);
+  const requestedTab = searchParams.get("tab");
+  const linkedTabs = ["notifications", "billing", "shops"];
+  const [tab, setTab] = useState(linkedTabs.includes(requestedTab) ? requestedTab : "business");
 
   useEffect(() => {
-    const requested = searchParams.get("tab");
-    if (requested && ["billing", "shops"].includes(requested)) setTab(requested);
-  }, [searchParams]);
+    if (requestedTab && linkedTabs.includes(requestedTab)) setTab(requestedTab);
+  }, [requestedTab]);
 
   // Load the shop's saved profile (one row per account, owned by the user).
   useEffect(() => {
@@ -130,6 +130,20 @@ export default function SettingsPage() {
     }
   };
 
+  // The picture is also the avatar in the top bar, so removing it puts the
+  // person's initial back in place everywhere it is shown.
+  const handleRemoveLogo = async () => {
+    setRemoveLogoOpen(false);
+    try {
+      await persistSettings({ logoUrl: "" });
+      setLogoUrl("");
+      await refreshShop();
+      toast({ title: "Picture removed", description: "Your initial now shows in its place." });
+    } catch (err) {
+      toast({ title: "Could not remove the picture", description: err.message, variant: "destructive" });
+    }
+  };
+
   const handleDeleteAccount = async () => {
     console.log("Account deletion requested - implementing logout");
     toast({ title: "Account Deletion", description: "Logging you out. Account deletion will be processed.", variant: "destructive" });
@@ -179,18 +193,31 @@ export default function SettingsPage() {
                     <Building2 size={32} className="text-background" />
                   )}
                 </div>
-                <div>
-                  <p className="font-semibold text-foreground">Shop Logo</p>
-                  <p className="text-xs text-muted-foreground">Tap to change logo</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-1 gap-2"
-                    disabled={uploadingLogo}
-                    onClick={() => logoInput.current?.click()}
-                  >
-                    <Upload size={14} /> {logoUrl ? "Change Logo" : "Upload Logo"}
-                  </Button>
+                <div className="min-w-0">
+                  <p className="font-semibold text-foreground">Profile picture</p>
+                  <p className="text-xs text-muted-foreground">Your avatar in the app and the shop logo on receipts</p>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      disabled={uploadingLogo}
+                      onClick={() => logoInput.current?.click()}
+                    >
+                      <Upload size={14} /> {logoUrl ? "Change picture" : "Upload picture"}
+                    </Button>
+                    {logoUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        aria-label="Remove profile picture"
+                        onClick={() => setRemoveLogoOpen(true)}
+                      >
+                        <Trash2 size={14} /> Remove
+                      </Button>
+                    )}
+                  </div>
                   <input
                     ref={logoInput}
                     type="file"
@@ -391,6 +418,27 @@ export default function SettingsPage() {
           Save Settings
         </Button>
       )}
+
+      {/* Remove Profile Picture Dialog */}
+      <AlertDialog open={removeLogoOpen} onOpenChange={setRemoveLogoOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove your profile picture?</AlertDialogTitle>
+            <AlertDialogDescription>
+              It disappears from the top bar, the sidebar and printed receipts. You can upload a new one at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep picture</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveLogo}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove picture
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Account Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

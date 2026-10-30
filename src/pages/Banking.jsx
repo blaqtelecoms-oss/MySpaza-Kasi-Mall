@@ -2,11 +2,11 @@ import { useState } from "react";
 import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
-import { Plus, Building2, RefreshCw, ArrowDownLeft, ArrowUpRight, Trash2, Edit } from "lucide-react";
+import { Plus, Building2, RefreshCw, ArrowDownLeft, ArrowUpRight, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MobileSelect } from "@/components/ui/mobile-select";
@@ -72,29 +72,29 @@ export default function Banking() {
   return (
     <div className="p-4 max-w-4xl mx-auto space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-foreground">Banking</h1>
+            <h1 className="text-xl font-bold text-foreground sm:text-2xl">Banking</h1>
             <QueryRefreshIndicator isFetching={accountsQuery.isFetching} hasData={accounts.length > 0} />
           </div>
-          <p className="text-muted-foreground text-sm">Total balance: <span className="text-green-700 dark:text-green-400 font-bold">{formatCurrency(totalBalance)}</span></p>
+          <p className="text-sm text-muted-foreground">Total balance: <span className="font-bold text-green-700 dark:text-green-400">{formatCurrency(totalBalance)}</span></p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setDepositModal(true)} variant="outline" className="gap-2 hidden sm:flex">
+          <Button onClick={() => setDepositModal(true)} variant="outline" className="hidden gap-2 sm:flex">
             <ArrowDownLeft size={16} /> Deposit
           </Button>
-          <Button onClick={openNew} className="bg-green-600 hover:bg-green-700 gap-2">
+          <Button onClick={openNew} className="gap-2 bg-green-600 hover:bg-green-700">
             <Plus size={16} /> Add Account
           </Button>
         </div>
       </div>
 
       {/* Total Balance Card */}
-      <div className="bg-gradient-to-r from-[#0D0D0D] to-[#1c1c1c] rounded-2xl p-6 text-white">
-        <p className="text-white/60 text-sm">Total Bank Balance</p>
-        <p className="text-4xl font-bold mt-1">{formatCurrency(totalBalance)}</p>
-        <div className="flex gap-3 mt-4">
+      <div className="bg-gradient-to-r from-[#0D0D0D] to-[#1c1c1c] rounded-2xl p-4 text-white sm:p-6">
+        <p className="text-sm text-white/60">Total Bank Balance</p>
+        <p className="mt-1 text-3xl font-bold tabular-nums sm:text-4xl">{formatCurrency(totalBalance)}</p>
+        <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
           <button onClick={() => setDepositModal(true)} className="flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-xl px-4 py-2 text-sm transition">
             <ArrowDownLeft size={16} /> Deposit
           </button>

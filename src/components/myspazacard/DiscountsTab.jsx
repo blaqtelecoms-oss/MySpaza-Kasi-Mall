@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "@/api/client";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
-import { Plus, Trash2, Pencil, Store, Tag, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Store, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

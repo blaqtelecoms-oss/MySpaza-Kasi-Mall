@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useEntityQuery } from "@/hooks/useEntityQuery";
-import { TrendingUp, TrendingDown, DollarSign, BarChart2, RefreshCw } from "lucide-react";
+import { TrendUp, TrendDown, Money, Percent, ArrowsClockwise } from "@phosphor-icons/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 const formatCurrency = (n) => `R ${(n || 0).toFixed(2)}`;
 const currentMonth = new Date().toISOString().slice(0, 7);
@@ -51,50 +50,64 @@ export default function Accounting() {
 
   return (
     <div className="p-4 max-w-5xl mx-auto space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Accounting</h1>
-          <p className="text-muted-foreground text-sm">Financial overview & bookkeeping</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground sm:text-2xl">Accounting</h1>
+          <p className="text-sm text-muted-foreground">Financial overview & bookkeeping</p>
         </div>
-        <Input type="month" value={filterMonth} onChange={e => setFilterMonth(e.target.value)} className="w-40" />
+        <Input
+          type="month"
+          aria-label="Reporting month"
+          value={filterMonth}
+          onChange={e => setFilterMonth(e.target.value)}
+          className="w-full sm:w-40"
+        />
       </div>
 
       {loading ? (
-        <div className="text-center py-12"><RefreshCw className="animate-spin mx-auto text-muted-foreground" size={32} /></div>
+        <div className="text-center py-12"><ArrowsClockwise className="animate-spin mx-auto text-muted-foreground" size={32} /></div>
       ) : (
         <Tabs defaultValue="pl">
-          <TabsList className="grid grid-cols-4 w-full">
-            <TabsTrigger value="pl">P&L</TabsTrigger>
-            <TabsTrigger value="balance">Balance Sheet</TabsTrigger>
-            <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-            <TabsTrigger value="ledger">Ledger</TabsTrigger>
+          <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+            <TabsTrigger value="pl" className="text-xs sm:text-sm">P&L</TabsTrigger>
+            <TabsTrigger value="balance" className="text-xs sm:text-sm">Balance Sheet</TabsTrigger>
+            <TabsTrigger value="cashflow" className="text-xs sm:text-sm">Cash Flow</TabsTrigger>
+            <TabsTrigger value="ledger" className="text-xs sm:text-sm">Ledger</TabsTrigger>
           </TabsList>
 
           {/* Profit & Loss */}
           <TabsContent value="pl" className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
               <Card className="bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900">
-                <CardContent className="p-4">
-                  <p className="text-xs text-green-600 dark:text-green-400">Revenue</p>
-                  <p className="text-xl font-bold text-green-700 dark:text-green-400">{formatCurrency(totalRevenue)}</p>
+                <CardContent className="p-3 sm:p-4">
+                  <p className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                    <TrendUp size={13} weight="duotone" className="shrink-0" /> Revenue
+                  </p>
+                  <p className="mt-0.5 text-base font-bold tabular-nums text-green-700 dark:text-green-400 sm:text-xl">{formatCurrency(totalRevenue)}</p>
                 </CardContent>
               </Card>
               <Card className="bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900">
-                <CardContent className="p-4">
-                  <p className="text-xs text-red-600 dark:text-red-400">Expenses</p>
-                  <p className="text-xl font-bold text-red-700 dark:text-red-400">{formatCurrency(totalExpenses)}</p>
+                <CardContent className="p-3 sm:p-4">
+                  <p className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
+                    <TrendDown size={13} weight="duotone" className="shrink-0" /> Expenses
+                  </p>
+                  <p className="mt-0.5 text-base font-bold tabular-nums text-red-700 dark:text-red-400 sm:text-xl">{formatCurrency(totalExpenses)}</p>
                 </CardContent>
               </Card>
               <Card className={`border-2 ${grossProfit >= 0 ? "bg-green-50 border-green-300 dark:bg-green-950/20 dark:border-green-900" : "bg-red-50 border-red-300 dark:bg-red-950/20 dark:border-red-900"}`}>
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground">Net Profit</p>
-                  <p className={`text-xl font-bold ${grossProfit >= 0 ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>{formatCurrency(grossProfit)}</p>
+                <CardContent className="p-3 sm:p-4">
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Money size={13} weight="duotone" className="shrink-0" /> Net Profit
+                  </p>
+                  <p className={`mt-0.5 text-base font-bold tabular-nums sm:text-xl ${grossProfit >= 0 ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>{formatCurrency(grossProfit)}</p>
                 </CardContent>
               </Card>
               <Card className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-900">
-                <CardContent className="p-4">
-                  <p className="text-xs text-yellow-600 dark:text-yellow-400">Margin</p>
-                  <p className="text-xl font-bold text-foreground">{totalRevenue > 0 ? ((grossProfit / totalRevenue) * 100).toFixed(1) : 0}%</p>
+                <CardContent className="p-3 sm:p-4">
+                  <p className="flex items-center gap-1.5 text-xs text-yellow-600 dark:text-yellow-400">
+                    <Percent size={13} weight="duotone" className="shrink-0" /> Margin
+                  </p>
+                  <p className="mt-0.5 text-base font-bold tabular-nums text-foreground sm:text-xl">{totalRevenue > 0 ? ((grossProfit / totalRevenue) * 100).toFixed(1) : 0}%</p>
                 </CardContent>
               </Card>
             </div>
@@ -123,22 +136,22 @@ export default function Accounting() {
               <CardHeader><CardTitle className="text-base">6-Month Performance</CardTitle></CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-xs sm:text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-2 text-muted-foreground font-medium">Month</th>
-                        <th className="text-right py-2 text-muted-foreground font-medium">Revenue</th>
-                        <th className="text-right py-2 text-muted-foreground font-medium">Expenses</th>
-                        <th className="text-right py-2 text-muted-foreground font-medium">Profit</th>
+                        <th className="py-2 text-left font-medium text-muted-foreground">Month</th>
+                        <th className="py-2 text-right font-medium text-muted-foreground">Revenue</th>
+                        <th className="py-2 text-right font-medium text-muted-foreground">Expenses</th>
+                        <th className="py-2 text-right font-medium text-muted-foreground">Profit</th>
                       </tr>
                     </thead>
                     <tbody>
                       {monthlyData.map(m => (
                         <tr key={m.month} className="border-b hover:bg-muted/50">
-                          <td className="py-2 font-medium">{m.month}</td>
-                          <td className="py-2 text-right text-green-700">{formatCurrency(m.revenue)}</td>
-                          <td className="py-2 text-right text-red-600">{formatCurrency(m.expenses)}</td>
-                          <td className={`py-2 text-right font-bold ${m.profit >= 0 ? "text-green-700" : "text-red-600"}`}>{formatCurrency(m.profit)}</td>
+                          <td className="whitespace-nowrap py-2 font-medium">{m.month}</td>
+                          <td className="whitespace-nowrap py-2 text-right tabular-nums text-green-700">{formatCurrency(m.revenue)}</td>
+                          <td className="whitespace-nowrap py-2 text-right tabular-nums text-red-600">{formatCurrency(m.expenses)}</td>
+                          <td className={`whitespace-nowrap py-2 text-right font-bold tabular-nums ${m.profit >= 0 ? "text-green-700" : "text-red-600"}`}>{formatCurrency(m.profit)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -155,7 +168,7 @@ export default function Accounting() {
               <CardContent>
                 <div className="grid sm:grid-cols-2 gap-6">
                   <div>
-                    <h3 className="font-bold text-green-700 mb-3 flex items-center gap-2"><TrendingUp size={16} /> ASSETS</h3>
+                    <h3 className="font-bold text-green-700 mb-3 flex items-center gap-2"><TrendUp size={16} weight="duotone" /> ASSETS</h3>
                     <div className="space-y-2">
                       <PLRow label="Cash & Bank Balance" amount={bankBalance} type="income" />
                       <PLRow label="Stock Inventory" amount={stockValue} type="income" />
@@ -165,7 +178,7 @@ export default function Accounting() {
                     </div>
                   </div>
                   <div>
-                    <h3 className="font-bold text-red-600 mb-3 flex items-center gap-2"><TrendingDown size={16} /> LIABILITIES & EQUITY</h3>
+                    <h3 className="font-bold text-red-600 mb-3 flex items-center gap-2"><TrendDown size={16} weight="duotone" /> LIABILITIES & EQUITY</h3>
                     <div className="space-y-2">
                       <PLRow label="Accumulated Profit" amount={grossProfit} type={grossProfit >= 0 ? "income" : "expense"} />
                       <PLRow label="Owner's Equity" amount={bankBalance + stockValue} type="income" />
@@ -214,12 +227,12 @@ export default function Accounting() {
                     ...monthlySales.map(s => ({ date: s.sale_date, description: `Sale ${s.sale_number || ""}`, type: "income", amount: s.total_amount })),
                     ...monthlyExpenses.map(e => ({ date: e.expense_date, description: `${e.category}: ${e.description || ""}`, type: "expense", amount: e.amount })),
                   ].sort((a, b) => b.date?.localeCompare(a.date)).slice(0, 30).map((entry, i) => (
-                    <div key={i} className="flex items-center justify-between py-2 border-b last:border-0">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{entry.description}</p>
+                    <div key={i} className="flex items-center justify-between gap-3 py-2 border-b last:border-0">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{entry.description}</p>
                         <p className="text-xs text-muted-foreground">{entry.date}</p>
                       </div>
-                      <p className={`font-bold text-sm ${entry.type === "income" ? "text-green-700" : "text-red-600"}`}>
+                      <p className={`shrink-0 whitespace-nowrap text-sm font-bold tabular-nums ${entry.type === "income" ? "text-green-700" : "text-red-600"}`}>
                         {entry.type === "income" ? "+" : "-"}{formatCurrency(entry.amount)}
                       </p>
                     </div>
@@ -236,9 +249,9 @@ export default function Accounting() {
 
 function PLRow({ label, amount, type, indent, bold, large }) {
   return (
-    <div className={`flex justify-between py-1.5 ${indent ? "pl-4" : ""}`}>
-      <span className={`${bold ? "font-bold" : "text-sm"} ${large ? "text-base" : ""} text-foreground`}>{label}</span>
-      <span className={`${bold ? "font-bold" : "font-medium text-sm"} ${large ? "text-lg" : ""} ${type === "income" ? "text-green-700" : "text-red-600"}`}>
+    <div className={`flex items-start justify-between gap-3 py-1.5 ${indent ? "pl-4" : ""}`}>
+      <span className={`min-w-0 break-words ${bold ? "font-bold" : "text-sm"} ${large ? "text-base" : ""} text-foreground`}>{label}</span>
+      <span className={`shrink-0 whitespace-nowrap tabular-nums ${bold ? "font-bold" : "font-medium text-sm"} ${large ? "text-lg" : ""} ${type === "income" ? "text-green-700" : "text-red-600"}`}>
         {formatCurrency(Math.abs(amount))}
       </span>
     </div>

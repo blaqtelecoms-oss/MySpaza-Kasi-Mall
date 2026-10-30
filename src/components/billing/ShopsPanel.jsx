@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, CircleNotch, Crown, MapPinPlus, PencilSimple, Plus, Storefront, X } from "@phosphor-icons/react";
+import { Check, CircleNotch, Crown, MapPinPlus, PencilSimple, Plus, Storefront, Trash, X } from "@phosphor-icons/react";
 import { api } from "@/api/client";
 import { useAuth } from "@/lib/AuthContext";
 import { useSubscription } from "@/lib/SubscriptionContext";
@@ -10,6 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import IconTile from "@/components/ui/icon-tile";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PLAN_BY_KEY, shopCountLabel } from "@/lib/plans";
 
 /**
@@ -27,6 +31,8 @@ export default function ShopsPanel() {
   const [saving, setSaving] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const shops = shop?.shops || [];
   const limit = shop?.shopLimit ?? null;
@@ -76,6 +82,31 @@ export default function ShopsPanel() {
       toast({ title: "Shop renamed", description: "The receipt header follows the new name." });
     } catch (error) {
       toast({ title: "Could not rename", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // Removing a branch also removes its stock, sales and cash-ups, so it always
+  // asks first. Deleting the shop the owner is working in moves them back to
+  // the main shop before the branch disappears.
+  const handleDelete = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    try {
+      const removed = deleteTarget;
+      const wasActive = removed.id === shop?.shopId;
+      const mainShop = shops.find((row) => row.isPrimary);
+      await api.shop.remove(removed.id);
+      setDeleteTarget(null);
+      if (wasActive && mainShop) {
+        await switchShop(mainShop.id);
+      } else {
+        await refreshShop();
+      }
+      toast({ title: "Shop removed", description: `${removed.name} and its records were deleted.` });
+    } catch (error) {
+      toast({ title: "Could not remove the shop", description: error.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -152,6 +183,16 @@ export default function ShopsPanel() {
                           >
                             <PencilSimple size={13} weight="regular" />
                           </button>
+                          {!row.isPrimary && (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteTarget(row)}
+                              className="rounded-md p-1 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                              aria-label={`Remove ${row.name}`}
+                            >
+                              <Trash size={13} weight="regular" />
+                            </button>
+                          )}
                         </div>
                       )}
                       <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">
@@ -259,6 +300,28 @@ export default function ShopsPanel() {
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {deleteTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This deletes the shop with its products, sales, cash-ups, expenses and team access.
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Keep shop</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => { event.preventDefault(); handleDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Removing…" : "Remove shop"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

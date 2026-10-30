@@ -23,6 +23,11 @@ See `README.md` for local setup, environment variables and the Supabase schema.
   webhook). Runs as the `api` compose service on host port `8000`.
 - `public/brand/auth-bg.jpg`: sign-in hero photo (grocery shelves), CC0 from
   Wikimedia Commons ("Grocery Outlet - September 2024" by Sarah Stierch).
+- `src/components/notifications/NotificationBell.jsx`: the top-bar bell and its
+  panel. Alerts are derived from data the shop already has (stock levels, today's
+  cash up, customer credit) — never invent notifications. Read/dismiss state is
+  device-local (`myspaza:notifications:<user id>`); the alert itself reappears if
+  the condition is still true on the next visit.
 - `src/pages/EmailEvents.jsx`: operator-only Resend event log at
   `/admin/email-events` ("Email Log" in the sidebar, `role = 'admin'` only).
 - `supabase/migrations/`: SQL policies applied to the Supabase project.
@@ -235,11 +240,28 @@ plan's shop allowance.
   names the caller as owner.
 - Ads: only Free sees them. `AdBanner` and `AcademyPromoBanner` return `null` when
   `planInfo.ads` is false (`planHasAds()` in `plans.js`).
-- Verify with a throwaway auth user (service role), sign in through the login form
-  (email + password), then: add branches up to the plan limit and confirm
+- Removing a branch: `public.delete_shop(p_id)` (migration
+  `20261104_delete_shop.sql`) is the only writer — the `shop` table still has no
+  delete policy for `authenticated`. It refuses the primary shop (that id is the
+  account; account deletion lives in Settings → Security) and removes the
+  branch's `shop_member`, open `shop_invite` rows, its `shop_settings` row and
+  every record whose `created_by_id` is the branch. `ShopsPanel` asks first and,
+  when the removed branch was the active one, switches back to the main shop
+  before reloading the shop context.
+- Verify with a throwaway auth user (service role), sign in through the login
+  form (email + password), then: add branches up to the plan limit and confirm
   `create_shop` refuses one more, switch branches and confirm a product created in
-  one branch is absent in the other, and delete the user plus its `shop` /
-  `shop_settings` / `shop_subscription` / data rows afterwards.
+  one branch is absent in the other, add a branch and remove it again (it
+  disappears from the switcher and the database), and delete the user plus its
+  `shop` / `shop_settings` / `shop_subscription` / data rows afterwards. Grant
+  Ultra first by upserting `shop_subscription (shop_id = <user id>, plan =
+  'ultra')` when the plan blocks a second shop.
+- The automation browser replays the signed-in user's own session on a fresh
+  page load, so drive a throwaway account only inside one script that signs in
+  first. React Query's persisted cache is keyed by entity, not by shop: a value
+  seeded straight into Postgres after a page loaded is not visible until
+  "Refresh data" in the sidebar (or a new session), which matters when seeding a
+  logo to test the picture removal.
 
 ## Operator tooling (catalogue copy + plan grants)
 
