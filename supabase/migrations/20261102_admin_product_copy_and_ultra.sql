@@ -247,9 +247,12 @@ begin
     order by p.created_date nulls first, p.id
   loop
     begin
+      -- `product.id` has no default, so every copy gets its own 24-character
+      -- hex id (the same shape the app generates) instead of the source id.
       execute format(
-        'insert into public.product (%s, created_by_id)
-         select %s, $1 from public.product where id = $2',
+        'insert into public.product (id, %s, created_by_id)
+         select encode(extensions.gen_random_bytes(12), ''hex''), %s, $1
+         from public.product where id = $2',
         v_cols, v_cols
       ) using v_shop, rec.id;
 

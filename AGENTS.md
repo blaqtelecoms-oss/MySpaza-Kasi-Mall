@@ -242,8 +242,10 @@ helpers; the screen is `/admin/product-copy` ("Catalogue Copy" in the sidebar,
   so a brand-new invitee can be prepared before their first login.
 - `admin_copy_products(email)` copies **every** product from every other shop,
   with all columns except `id`/`created_date`/`updated_date`/`created_by_id` — so
-  `image_url`, prices, cost and stock travel with the row. It never touches the
-  source rows and never copies the account's own catalogue.
+  `image_url`, prices, cost and stock travel with the row. `product.id` is `text`
+  with **no default**, so the copy generates a fresh 24-character hex id per row
+  (a straight column copy fails with `null value in column "id"`). It never
+  touches the source rows and never copies the account's own catalogue.
 - Re-running is safe: `product_copy_log (source_product_id, target_shop)` records
   what landed, so a retry copies nothing. Rows that fail (e.g. a unique
   constraint) are counted and the first five errors returned instead of aborting
