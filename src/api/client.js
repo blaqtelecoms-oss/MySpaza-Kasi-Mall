@@ -614,7 +614,9 @@ const shop = {
     }
 
     const plan = billing?.plan || "free";
-    const limit = shopLimit(plan);
+    // A shop may carry its own store allowance (operator-granted), which wins
+    // over the plan's number — the same rule `public.shop_store_limit()` applies.
+    const limit = billing?.max_shops ?? shopLimit(plan);
 
     return {
       shopId,
@@ -850,7 +852,39 @@ const groups = {
   },
 };
 
-export const api = { entities, auth, integrations, shop, groups, billing };
+/**
+ * Operator-only tools (`profiles.role = 'admin'`): copy every shop's catalogue
+ * into one account and grant a plan with a store allowance. The database
+ * re-checks `public.is_admin()` inside each function, so hiding the screen is
+ * convenience, not the access control.
+ */
+const admin = {
+  /** Current plan, store allowance and catalogue counts for one account. */
+  async summary(email) {
+    const { data, error } = await supabase.rpc("admin_product_copy_summary", { p_email: email });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Copy every shop's products (images and prices included) into the account. */
+  async copyProducts(email) {
+    const { data, error } = await supabase.rpc("admin_copy_products", { p_email: email });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Grant Ultra with no expiry and a store allowance (3 by default). */
+  async grantUltra(email, maxShops = 3) {
+    const { data, error } = await supabase.rpc("admin_grant_ultra", {
+      p_email: email,
+      p_max_shops: maxShops,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+};
+
+export const api = { entities, auth, integrations, shop, groups, billing, admin };
 
 // Transparent offline caching + write queueing over the entity layer.
 installOfflineLayer(api);

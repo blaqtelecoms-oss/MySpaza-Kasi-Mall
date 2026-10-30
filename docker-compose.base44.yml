@@ -28,6 +28,11 @@ services:
       # Employee invitations: the dev server proxies /api to the email service,
       # so the browser calls its own origin (as it does in production).
       - EMAIL_API_TARGET=http://api:8080
+      # inotify events do not reach the bind-mounted checkout in the sandbox, so
+      # Vite's watcher misses edits and keeps serving the first transform. Polling
+      # makes hot reload (and a fresh page load) pick up source changes.
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=300
     env_file:
       # Committed development placeholders so a sandbox with no credentials yet
       # still boots the shell. Listed first, so the real values below always win.

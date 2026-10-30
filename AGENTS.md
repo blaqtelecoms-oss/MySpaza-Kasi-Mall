@@ -227,6 +227,44 @@ plan's shop allowance.
   one branch is absent in the other, and delete the user plus its `shop` /
   `shop_settings` / `shop_subscription` / data rows afterwards.
 
+## Operator tooling (catalogue copy + plan grants)
+
+`supabase/migrations/20261102_admin_product_copy_and_ultra.sql` adds the admin
+helpers; the screen is `/admin/product-copy` ("Catalogue Copy" in the sidebar,
+`role = 'admin'` only).
+
+- Every function re-checks `public.is_admin()` and is `security definer`, so RLS
+  is unchanged and a non-operator caller gets a `42501` refusal. The screen is
+  convenience, not the access control.
+- `admin_target_shop(email)` resolves an account to the shop its rows belong to:
+  the shop an employee works in, otherwise the account id (the primary shop keeps
+  that id). It falls back to `auth.users` when the account has never signed in,
+  so a brand-new invitee can be prepared before their first login.
+- `admin_copy_products(email)` copies **every** product from every other shop,
+  with all columns except `id`/`created_date`/`updated_date`/`created_by_id` — so
+  `image_url`, prices, cost and stock travel with the row. It never touches the
+  source rows and never copies the account's own catalogue.
+- Re-running is safe: `product_copy_log (source_product_id, target_shop)` records
+  what landed, so a retry copies nothing. Rows that fail (e.g. a unique
+  constraint) are counted and the first five errors returned instead of aborting
+  the whole run.
+- `admin_grant_ultra(email, max_shops)` upserts `shop_subscription` with
+  `plan = 'ultra'`, clears any pending plan and sets `current_period_end = null`
+  — Ultra with no expiry. The store cap lives in the new
+  `shop_subscription.max_shops` column, which `public.shop_store_limit()` reads
+  ahead of the plan's number; `create_shop()` enforces that value, so a capped
+  Ultra account really cannot add a fourth store. `shop_billing()` reports
+  `max_shops`, and `client.js` prefers it over `SHOP_LIMITS`, so the shop switcher
+  and the plan panel show the same number the database enforces.
+- Verify the SQL without a browser by replaying the migrations into a scratch
+  Postgres with `auth`/`storage`/`extensions` shims (see the sandbox note below).
+  Assert: non-admin refusal, copy counts and image/price fidelity, a second run
+  copying zero, the 4th `create_shop` raising, and `shop_billing().max_shops`.
+- Replay order quirk: `20261028_shop_employees.sql` needs `shop_settings`, which
+  `20261028_shop_logo_and_settings.sql` creates, so run the logo migration first
+  when applying the set by hand. The imported tables (`product`, `sale`, …) and
+  `profiles` are not in any migration — create them before replaying.
+
 ## Sandbox runtime (`docker-compose.base44.yml`)
 
 `docker compose -f docker-compose.base44.yml up -d` runs two services.
@@ -247,6 +285,11 @@ plan's shop allowance.
   `0.0.0.0` and accept the preview host (`.<BASE44_SANDBOX_HOST_DOMAIN>`, e.g.
   `3000-<sandbox id>.e2b.app`) so the preview proxy can reach it. Unset,
   `npm run dev` keeps its default localhost binding and host checks.
+- `CHOKIDAR_USEPOLLING=true` (with `CHOKIDAR_INTERVAL=300`): inotify events do
+  not reach the bind-mounted checkout, so without polling Vite kept serving the
+  first transform of a file and a reload still showed stale code. If an edit
+  seems to vanish, confirm the dev server serves it:
+  `curl -s localhost:3000/src/App.jsx | grep <new-token>`.
 - The app talks to Supabase directly from the browser; the only local backend
   is the email service.
 

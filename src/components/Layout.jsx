@@ -6,7 +6,7 @@ import {
   Users, Truck, BookOpen, BarChart2, Settings, Menu, X, Bell,
   Building2, GraduationCap, Bot, CreditCard, ChevronDown, ChevronRight,
   Banknote, UserCheck, Calculator, RefreshCw, Wallet, ArrowLeft, TrendingDown, Receipt,
-  MailSearch, LogOut
+  MailSearch, LogOut, PackagePlus
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useAuth } from "@/lib/AuthContext";
@@ -39,6 +39,8 @@ const navItems = [
   { icon: Settings, label: "Settings", path: "/settings", ownerOnly: true },
   // Operator-only: the Resend delivery log for signup and account emails.
   { icon: MailSearch, label: "Email Log", path: "/admin/email-events", adminOnly: true },
+  // Operator-only: copy every shop's catalogue into one account and hand out a plan.
+  { icon: PackagePlus, label: "Catalogue Copy", path: "/admin/product-copy", adminOnly: true },
 ];
 
 export default function Layout() {

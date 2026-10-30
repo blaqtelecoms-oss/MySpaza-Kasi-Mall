@@ -33,6 +33,9 @@ export default function ShopsPanel() {
   const atLimit = limit !== null && shops.length >= limit;
   const nextPlanKey = plan === "free" ? "premium" : "ultra";
   const nextPlan = PLAN_BY_KEY[nextPlanKey];
+  // Ultra normally means unlimited shops; an operator can still pin an account
+  // to a fixed allowance, and then no upgrade exists to sell.
+  const cappedByAllowance = plan === "ultra" && limit !== null;
 
   const handleAdd = async (event) => {
     event.preventDefault();
@@ -91,7 +94,8 @@ export default function ShopsPanel() {
                 {shops.length} of {limit === null ? "unlimited" : limit} shop{limit === 1 ? "" : "s"} used
               </p>
               <p className="text-xs text-slate-600">
-                {planInfo.name} plan · {shopCountLabel(plan).toLowerCase()}
+                {planInfo.name} plan ·{" "}
+                {limit === null ? "unlimited shops" : `${limit} shop${limit === 1 ? "" : "s"}`}
               </p>
             </div>
             <Badge className="bg-teal-700 text-white hover:bg-teal-700">{planInfo.name}</Badge>
@@ -187,18 +191,26 @@ export default function ShopsPanel() {
               <IconTile icon={Crown} tone="amber" />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900">
-                  {plan === "free" ? "Add a second branch on Premium" : "Run as many shops as you like on Ultra"}
+                  {cappedByAllowance
+                    ? `This account is set up for ${limit} shops`
+                    : plan === "free"
+                      ? "Add a second branch on Premium"
+                      : "Run as many shops as you like on Ultra"}
                 </p>
                 <p className="text-xs text-slate-600">
-                  {`${PLAN_BY_KEY[plan].name} covers ${shopCountLabel(plan)}. ${nextPlan.name} covers ${shopCountLabel(
-                    nextPlanKey
-                  ).toLowerCase()}${nextPlan.ads ? "" : " and removes ads"}.`}
+                  {cappedByAllowance
+                    ? "The store allowance is fixed, so another shop cannot be added to this account."
+                    : `${PLAN_BY_KEY[plan].name} covers ${shopCountLabel(plan)}. ${nextPlan.name} covers ${shopCountLabel(
+                        nextPlanKey
+                      ).toLowerCase()}${nextPlan.ads ? "" : " and removes ads"}.`}
                 </p>
               </div>
             </div>
-            <Button className="shrink-0" onClick={() => openCheckout(nextPlanKey)}>
-              Upgrade to {nextPlan.name}
-            </Button>
+            {!cappedByAllowance && (
+              <Button className="shrink-0" onClick={() => openCheckout(nextPlanKey)}>
+                Upgrade to {nextPlan.name}
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
