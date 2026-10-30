@@ -233,7 +233,10 @@ function StokvelCard({ account, onAction }) {
       <div className="bg-gradient-to-br from-green-700 to-green-900 rounded-2xl p-5 text-white shadow-lg">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-green-200 text-xs">{account.name?.trim() || "Stokvel"}</p>
+            <p className="text-green-200 text-xs">
+              {account.name?.trim() || "Stokvel"}
+              {account.invited ? <span className="ml-2 rounded bg-green-950/40 px-1.5 py-0.5 text-[10px]">member</span> : null}
+            </p>
             <p className="text-3xl font-bold">{fmt(account.balance)}</p>
             <p className="text-[11px] text-green-200 mt-1">
               {paidCount} of {members.length} member{members.length === 1 ? "" : "s"} paid up
@@ -267,35 +270,39 @@ function StokvelCard({ account, onAction }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Button onClick={() => onAction("deposit")} className="bg-green-600 hover:bg-green-700 h-12">
-          <ArrowDownCircle size={18} /> Add to Savings
-        </Button>
-        <Button
-          onClick={() => onAction("withdraw")}
-          variant="outline"
-          className="h-12 border-green-200 text-green-700"
-        >
-          <ArrowUpCircle size={18} /> Withdraw
-        </Button>
-      </div>
+      {!account.invited && (
+        <div className="grid grid-cols-2 gap-2">
+          <Button onClick={() => onAction("deposit")} className="bg-green-600 hover:bg-green-700 h-12">
+            <ArrowDownCircle size={18} /> Add to Savings
+          </Button>
+          <Button
+            onClick={() => onAction("withdraw")}
+            variant="outline"
+            className="h-12 border-green-200 text-green-700"
+          >
+            <ArrowUpCircle size={18} /> Withdraw
+          </Button>
+        </div>
+      )}
 
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" onClick={() => onAction("edit")}>
-          <Pencil size={14} /> Edit details
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => onAction("members")}>
-          <Users size={14} /> Manage members
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => onAction("delete")}
-          className="text-red-600 border-red-200 hover:text-red-700"
-        >
-          <Trash2 size={14} /> Remove
-        </Button>
-      </div>
+      {!account.invited && (
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => onAction("edit")}>
+            <Pencil size={14} /> Edit details
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => onAction("members")}>
+            <Users size={14} /> Manage members
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onAction("delete")}
+            className="text-red-600 border-red-200 hover:text-red-700"
+          >
+            <Trash2 size={14} /> Remove
+          </Button>
+        </div>
+      )}
 
       <div className="bg-white border rounded-xl p-4">
         <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1">
@@ -334,11 +341,13 @@ function StokvelCard({ account, onAction }) {
             ))}
           </div>
         )}
-        <GroupInvites
-          groupKind="stokvel"
-          groupId={account.id}
-          groupName={account.name?.trim() || "this stokvel"}
-        />
+        {!account.invited && (
+          <GroupInvites
+            groupKind="stokvel"
+            groupId={account.id}
+            groupName={account.name?.trim() || "this stokvel"}
+          />
+        )}
       </div>
     </div>
   );

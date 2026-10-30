@@ -143,6 +143,20 @@ still `stockfell_account` / `StockfellAccount`, so nothing migrates.
 - Pending invitations are read from `group_invite` through the entity layer
   (`GroupInvite`), scoped by the owner policy `public.is_shop_owner(shop_id)` so
   branches work too.
+- **An invited member sees the group.** The group row keeps the inviting shop's
+  `created_by_id`, and the member is neither that shop's owner nor its employee,
+  so RLS and the client's branch scope both hid the row from them.
+  `supabase/migrations/20261103_group_member_visibility.sql` adds
+  `my_group_memberships(p_kind)` (`security definer`, returns only rows whose
+  `members` array carries the caller's own address via
+  `jsonb_has_member_email`), and `client.js` merges its answer into
+  `StockfellAccount` / `SavingsGroup` / `BulkBuy` `list()`, marking those rows
+  `invited`. The screens use that flag to drop owner-only controls (edit,
+  manage members, invite, deposit/withdraw, delete) on a group the person was
+  invited to. RLS is untouched: a member still cannot read or write these
+  tables directly — never fix a visibility gap by widening a table policy.
+  Members are matched by `email`, so anything that adds a member by hand must
+  set it (`GroupMembersDialog` does).
 - Adding an endpoint means three edits: `server/index.js` routes,
   `netlify/functions/api.mjs` routes (the public site), and the client call.
 

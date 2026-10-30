@@ -68,12 +68,16 @@ export default function SavingsGroupsTab() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => { setEdit(g); setModal(true); }}><Pencil size={15} className="text-gray-400 hover:text-gray-600" /></button>
-                    <button onClick={() => setConfirmGroup(g)} aria-label={`Remove ${g.name}`}>
-                      <Trash2 size={15} className="text-red-400 hover:text-red-600" />
-                    </button>
-                  </div>
+                  {g.invited ? (
+                    <Badge variant="outline" className="text-[10px]">member</Badge>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => { setEdit(g); setModal(true); }}><Pencil size={15} className="text-gray-400 hover:text-gray-600" /></button>
+                      <button onClick={() => setConfirmGroup(g)} aria-label={`Remove ${g.name}`}>
+                        <Trash2 size={15} className="text-red-400 hover:text-red-600" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <p className="text-xs text-gray-500 mt-2">{g.description}</p>
@@ -108,7 +112,7 @@ export default function SavingsGroupsTab() {
                   </div>
                 </div>
 
-                <GroupInvites groupKind="savings_group" groupId={g.id} groupName={g.name} />
+                {!g.invited && <GroupInvites groupKind="savings_group" groupId={g.id} groupName={g.name} />}
               </div>
             );
           })}

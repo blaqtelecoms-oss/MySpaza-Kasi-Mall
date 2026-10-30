@@ -134,6 +134,24 @@ const SHOP_SCOPED = new Set([
   "stockfell_account", "supplier", "wholesaler", "wholesaler_discount",
 ]);
 
+// Groups stay the property of the shop that started them, so an invited member's
+// address lives only in the row's `members` array. Those rows are read through
+// `my_group_memberships()` (which answers for the signed-in address) and merged
+// into the list, marked `invited` so the screens keep owner actions off them.
+const GROUP_KINDS = {
+  stockfell_account: "stokvel",
+  savings_group: "savings_group",
+  bulk_buy: "bulk_buy",
+};
+
+async function invitedGroups(name) {
+  const kind = GROUP_KINDS[name];
+  if (!kind) return [];
+  const { data, error } = await supabase.rpc("my_group_memberships", { p_kind: kind });
+  if (error) throw new Error(error.message);
+  return (data || []).map((row) => ({ ...row, invited: true }));
+}
+
 // A shop is the owner's account (or one of its branches): rows an employee
 // writes belong to the shop they work in, not to the employee's own account.
 // Cached per signed-in user so every write does not re-read the membership.
@@ -228,7 +246,11 @@ function makeEntity(entity) {
     table: name,
 
     async list(sort, limit) {
-      return ordered(() => supabase.from(name).select("*"), await shopCriteria(), sort, limit);
+      const rows = await ordered(() => supabase.from(name).select("*"), await shopCriteria(), sort, limit);
+      const invited = await invitedGroups(name);
+      if (invited.length === 0) return rows;
+      const seen = new Set(rows.map((row) => row.id));
+      return [...rows, ...invited.filter((row) => !seen.has(row.id))];
     },
 
     async filter(criteria, sort, limit) {
