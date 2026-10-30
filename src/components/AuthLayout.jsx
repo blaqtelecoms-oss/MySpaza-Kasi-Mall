@@ -28,7 +28,7 @@ export default function AuthLayout({ title, subtitle, footer, children }) {
           src="/brand/auth-bg.jpg"
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-40 [filter:grayscale(0.45)_saturate(0.9)]"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-20 [filter:grayscale(0.45)_saturate(0.9)]"
         />
         <div
           aria-hidden="true"
@@ -92,6 +92,18 @@ export default function AuthLayout({ title, subtitle, footer, children }) {
             <span className="text-sm font-semibold tracking-tight text-slate-700">
               My Spaza
             </span>
+          </div>
+
+          {/* The panel copy is desktop-only, so small screens get the same
+              headline above the form instead of losing it entirely. */}
+          <div className="mb-6 lg:hidden">
+            <h2 className="text-[1.6rem] font-semibold leading-tight tracking-tight text-slate-900">
+              Run your shop like a business, not a notebook.
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+              Point of sale, stock, cash-up and debtors for spaza shops in one calm
+              workspace that keeps your numbers straight.
+            </p>
           </div>
 
           <div className="rounded-2xl border border-slate-200/80 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_24px_60px_-24px_rgba(15,23,42,0.18)] sm:p-9">

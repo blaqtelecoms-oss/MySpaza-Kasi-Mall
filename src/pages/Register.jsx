@@ -20,6 +20,7 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const navigate = useNavigate();
@@ -79,8 +80,15 @@ export default function Register() {
     }
   };
 
-  const handleGoogle = () => {
-    api.auth.loginWithProvider("google", nextPath);
+  const handleGoogle = async () => {
+    setError("");
+    setGoogleLoading(true);
+    try {
+      await api.auth.loginWithProvider("google", nextPath);
+    } catch (err) {
+      setError(err.message || "Could not start Google sign-in. Please try again.");
+      setGoogleLoading(false);
+    }
   };
 
   if (showOtp) {
@@ -155,9 +163,19 @@ export default function Register() {
         variant="outline"
         className="w-full h-12 text-sm font-medium mb-6"
         onClick={handleGoogle}
+        disabled={googleLoading}
       >
-        <GoogleIcon className="w-5 h-5 mr-2" />
-        Continue with Google
+        {googleLoading ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Connecting...
+          </>
+        ) : (
+          <>
+            <GoogleIcon className="w-5 h-5 mr-2" />
+            Continue with Google
+          </>
+        )}
       </Button>
 
       <div className="relative mb-6">

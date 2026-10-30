@@ -17,6 +17,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
   // Invitation links send people here with ?next=/invite/<token>.
   const nextPath = useNextPath();
@@ -35,8 +36,15 @@ export default function Login() {
     }
   };
 
-  const handleGoogle = () => {
-    api.auth.loginWithProvider("google", nextPath);
+  const handleGoogle = async () => {
+    setError("");
+    setGoogleLoading(true);
+    try {
+      await api.auth.loginWithProvider("google", nextPath);
+    } catch (err) {
+      setError(err.message || "Could not start Google sign-in. Please try again.");
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -56,9 +64,19 @@ export default function Login() {
         variant="outline"
         className="mb-6 h-11 w-full rounded-lg border-slate-300 bg-white text-sm font-medium text-slate-700 shadow-none hover:bg-slate-50"
         onClick={handleGoogle}
+        disabled={googleLoading}
       >
-        <GoogleIcon className="w-5 h-5 mr-2" />
-        Continue with Google
+        {googleLoading ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Connecting...
+          </>
+        ) : (
+          <>
+            <GoogleIcon className="w-5 h-5 mr-2" />
+            Continue with Google
+          </>
+        )}
       </Button>
 
       <div className="relative mb-6">

@@ -495,15 +495,14 @@ const auth = {
     return { ok: true };
   },
 
-  loginWithProvider(provider, returnTo = "/") {
-    supabase.auth
-      .signInWithOAuth({
-        provider,
-        options: { redirectTo: authRedirect(returnTo) },
-      })
-      .catch(() => {
-        /* surfaced on the login screen by the browser redirect failing */
-      });
+  async loginWithProvider(provider, returnTo = "/") {
+    // On success the browser leaves for the provider, so an error here means
+    // the redirect never happened (provider not enabled, offline, ...).
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: authRedirect(returnTo) },
+    });
+    if (error) throw new Error(error.message);
   },
 
   async logout(redirectUrl) {

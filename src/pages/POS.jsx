@@ -5,8 +5,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
 import { Search, ShoppingCart, CheckCircle, Printer, Send, WifiOff, Check } from "lucide-react";
 import {
-  Money, Bank, DeviceMobile, QrCode, Receipt as ReceiptIcon, Package as PackageIcon,
+  Money, Bank, DeviceMobile, QrCode, Receipt as ReceiptIcon, Package as PackageIcon, CreditCard,
 } from "@phosphor-icons/react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -252,31 +255,34 @@ export default function POS() {
       {/* Products Panel */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Search & Filters */}
-        <div className="p-3 bg-white border-b space-y-2">
-          <div className="relative">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <Input
-              placeholder="Search product or scan barcode..."
-              className="pl-10 h-11 text-base"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="p-3 bg-white border-b">
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Search product or scan barcode..."
+                className="pl-10 h-11 text-base"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
             <QueryRefreshIndicator isFetching={productsQuery.isFetching} hasData={products.length > 0} />
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                  selectedCategory === cat
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
+            {/* Category dropdown: opens the full list, so long categories never
+                push the search bar off a small screen. */}
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger
+                aria-label="Filter products by category"
+                className="h-11 w-[8.75rem] shrink-0 gap-1.5 rounded-lg border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 shadow-none focus:ring-2 focus:ring-green-600/20 sm:w-[11rem]"
               >
-                {cat === "all" ? "All Items" : cat}
-              </button>
-            ))}
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end" className="max-h-72">
+                <SelectItem value="all">All Items</SelectItem>
+                {categories.filter(cat => cat !== "all").map(cat => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
