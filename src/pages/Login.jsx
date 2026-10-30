@@ -8,6 +8,7 @@ import { Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { useNextPath } from "@/lib/redirect";
+import { useAuth } from "@/lib/AuthContext";
 
 const fieldClass =
   "h-11 rounded-lg border-slate-300 bg-white pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:border-teal-600 focus-visible:ring-teal-600/20";
@@ -19,6 +20,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
+  // The route guards read their state from AuthContext, so the new session has
+  // to be loaded into context before navigating away — otherwise the first
+  // attempt hits a guard that still sees a signed-out user and bounces back.
+  const { checkUserAuth } = useAuth();
   // Invitation links send people here with ?next=/invite/<token>.
   const nextPath = useNextPath();
 
@@ -28,6 +33,7 @@ export default function Login() {
     setLoading(true);
     try {
       await api.auth.loginViaEmailPassword(email, password);
+      await checkUserAuth();
       navigate(nextPath, { replace: true });
     } catch (err) {
       setError(err.message || "Invalid email or password");

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, Link, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   SquaresFour, ShoppingCart, Package, TrendUp, CurrencyDollar, UsersThree, Truck,
   ChartBar, GearSix, List, X, Bank, GraduationCap, Robot, CreditCard,
-  Money, UserCheck, Calculator, ArrowsClockwise, Wallet, ArrowLeft, TrendDown, Receipt,
+  Money, UserCheck, Calculator, ArrowsClockwise, Wallet, TrendDown, Receipt,
   EnvelopeSimple, SignOut, StackPlus,
 } from "@phosphor-icons/react";
 import NotificationBell from "@/components/notifications/NotificationBell";
@@ -58,7 +58,7 @@ export default function Layout() {
   const [signingOut, setSigningOut] = useState(false);
   const profileRef = useRef(null);
   const location = useLocation();
-  const navigate = useNavigate();
+
 
   const userInitial = (user?.full_name || user?.email || "?").trim().charAt(0).toUpperCase();
 
@@ -92,7 +92,6 @@ export default function Layout() {
       setTimeout(() => setBtnRefreshing(false), 700);
     }
   };
-  const isSubPage = !["/", "/pos", "/inventory", "/myspaza-card"].includes(location.pathname);
   const { scrollRef, pullDistance, refreshing } = usePullToRefresh({
     onRefresh: async () => { await queryClientInstance.invalidateQueries(); },
   });
@@ -186,14 +185,6 @@ export default function Layout() {
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
         >
           <div className="flex items-center gap-3">
-            {isSubPage && (
-              <button
-                onClick={() => navigate(-1)}
-                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <ArrowLeft size={20} weight="bold" className="text-gray-600 dark:text-gray-300" />
-              </button>
-            )}
             <button
               onClick={() => setSidebarOpen(true)}
               aria-label="Open menu"

@@ -152,6 +152,17 @@ npm run build
   optional Google OAuth (enable the provider in Supabase → Authentication →
   Providers). Email confirmation is honoured: when it is enabled, sign-up shows
   a code-entry step using the emailed 6-digit token.
+- **Google sign-in** — the browser sends `redirect_uri` =
+  `https://<project-ref>.supabase.co/auth/v1/callback` to Google, so that exact
+  URI must be an *Authorised redirect URI* on the Google Cloud OAuth client whose
+  id is stored in the Supabase Google provider. Without it Google answers
+  "Error 400: redirect_uri_mismatch" before the user ever reaches the app, and no
+  app-side change can fix it. For this project (ref `udzqtqgscercylqwrkkj`,
+  client `102110764491-ura2q3d9rccuinu2d9ctb7ea53j0h0kd`) add
+  `https://udzqtqgscercylqwrkkj.supabase.co/auth/v1/callback` under Google Cloud
+  Console → APIs & Services → Credentials → OAuth 2.0 Client IDs. The app's own
+  return URL (`window.location.origin` + the `?next=` path) is a separate value
+  and only has to be in Supabase's *Redirect URLs* allow list.
 - **Profiles** — `public.profiles` mirrors each auth user (`id`, `email`,
   `full_name`, `role`). A row is created automatically on first sign-in when it
   is missing.
