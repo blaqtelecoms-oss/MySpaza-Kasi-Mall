@@ -56,6 +56,20 @@ function unwrap({ data, error }) {
   return data;
 }
 
+/**
+ * Error text for a failed invitation call. The email service answers 5xx
+ * itself (`{ error }`), but a service that is restarting never answers at all:
+ * the proxy then returns a bare 5xx with no JSON, so say that plainly instead
+ * of surfacing "Invitation failed (500)".
+ */
+function inviteError(status, body) {
+  if (body?.error) return body.error;
+  if (status >= 500) {
+    return "The invitation service is unavailable right now. Please try again in a moment.";
+  }
+  return `Invitation failed (${status})`;
+}
+
 /** "-field" sorts newest-first (the app's convention), "field" ascending. */
 function readSort(sort) {
   const raw = (typeof sort === "string" && sort.trim()) || "-created_date";
@@ -724,7 +738,7 @@ const shop = {
       body: JSON.stringify({ email, fullName, monthlySalary, role, permissions, shopId }),
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || `Invitation failed (${response.status})`);
+    if (!response.ok) throw new Error(inviteError(response.status, body));
     return body;
   },
 
@@ -844,7 +858,7 @@ const groups = {
       body: JSON.stringify({ email, groupKind, groupId, shopId }),
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || `Invitation failed (${response.status})`);
+    if (!response.ok) throw new Error(inviteError(response.status, body));
     return body;
   },
 

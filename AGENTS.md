@@ -319,6 +319,12 @@ helpers; the screen is `/admin/product-copy` ("Catalogue Copy" in the sidebar,
 - Webhooks are called by third parties, so they target the api service's own
   port host, `https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/...`, not the Vite
   dev server.
+- If the api service is not running, `/api/*` through the Vite proxy answers a
+  bare 5xx with no JSON body — that is what produced the "Invitation failed
+  (500)" toast. `docker compose -f docker-compose.base44.yml ps` shows whether
+  it is up (`docker compose ... start api` brings it back), and since then
+  `client.js` turns that bodyless 5xx into "The invitation service is
+  unavailable right now." so the cause is readable.
 
 ## Public deployment (Netlify, https://myspaza-app.co.za)
 
