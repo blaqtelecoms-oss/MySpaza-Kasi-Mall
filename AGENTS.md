@@ -237,6 +237,12 @@ plan's shop allowance.
   checkout, so edits hot-reload. Host port `3000` maps to Vite's `:5173`.
 - Supabase credentials come from the platform env file `/run/base44/app.env`
   (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). They are never committed.
+- `.env.base44-defaults` is listed **before** `/run/base44/app.env` and holds
+  fake, valid-looking Supabase values so a sandbox with no credentials still
+  boots and renders the sign-in screen instead of a blank page
+  (`src/api/supabase.js` throws without them). They are placeholders only:
+  sign-in, data, uploads and email fail until the real project URL and anon key
+  are added as secrets. Because `app.env` is listed last, real values win.
 - `BASE44_PREVIEW_MODE=1` makes `vite.config.js` bind the dev server to
   `0.0.0.0` and accept the preview host (`.<BASE44_SANDBOX_HOST_DOMAIN>`, e.g.
   `3000-<sandbox id>.e2b.app`) so the preview proxy can reach it. Unset,
