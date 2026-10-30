@@ -304,34 +304,56 @@ export default function Layout() {
         </main>
       </div>
 
-      {/* Mobile Bottom Tab Bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-stretch h-16" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {[
-          { icon: SquaresFour, label: "Home", path: "/" },
-          { icon: ShoppingCart, label: "POS", path: "/pos", module: "pos" },
-          { icon: Package, label: "Stock", path: "/inventory", module: "inventory" },
-          { icon: Wallet, label: "Card", path: "/myspaza-card", module: "myspaza_card" },
-        ].filter(t => !t.module || can(t.module)).map(t => {
-          const Icon = t.icon;
-          const active = location.pathname === t.path;
-          return (
-            <Link
-              key={t.path}
-              to={t.path}
-              className={`flex flex-col items-center justify-center flex-1 gap-0.5 ${active ? "text-[#0D0D0D] dark:text-[#FFD426]" : "text-gray-500 dark:text-gray-400"}`}
-            >
-              <Icon size={22} weight={active ? "fill" : "duotone"} />
-              <span className="text-[10px] font-medium">{t.label}</span>
-            </Link>
-          );
-        })}
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="flex flex-col items-center justify-center flex-1 gap-0.5 text-gray-500 dark:text-gray-400"
-        >
-          <List size={22} weight="duotone" />
-          <span className="text-[10px] font-medium">More</span>
-        </button>
+      {/* Mobile Bottom Tab Bar — a floating frosted bar with the active tab
+          lifted into an ink tile, so the current screen reads at a glance. */}
+      <nav
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-30 px-3"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
+      >
+        <div className="mx-auto flex max-w-md items-stretch gap-0.5 rounded-[20px] border border-black/[0.06] bg-white/80 p-1.5 shadow-[0_10px_34px_-14px_rgba(13,13,13,0.45),0_1px_2px_rgba(13,13,13,0.05)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 dark:border-white/10 dark:bg-[#141414]/85 dark:supports-[backdrop-filter]:bg-[#141414]/75">
+          {[
+            { icon: SquaresFour, label: "Home", path: "/" },
+            { icon: ShoppingCart, label: "POS", path: "/pos", module: "pos" },
+            { icon: Package, label: "Stock", path: "/inventory", module: "inventory" },
+            { icon: Wallet, label: "Card", path: "/myspaza-card", module: "myspaza_card" },
+          ].filter(t => !t.module || can(t.module)).map(t => {
+            const Icon = t.icon;
+            const active = location.pathname === t.path;
+            return (
+              <Link
+                key={t.path}
+                to={t.path}
+                aria-current={active ? "page" : undefined}
+                className={`group flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-1.5 transition-transform duration-150 active:scale-[0.96] ${
+                  active ? "text-[#0D0D0D] dark:text-[#FFD426]" : "text-gray-500 hover:text-[#0D0D0D] dark:text-gray-400 dark:hover:text-white"
+                }`}
+              >
+                <span
+                  className={`flex h-[30px] w-9 items-center justify-center rounded-[11px] transition-all duration-200 ${
+                    active
+                      ? "bg-[#0D0D0D] text-white shadow-[0_5px_14px_-4px_rgba(13,13,13,0.55)] dark:bg-[#FFD426] dark:text-[#0D0D0D] dark:shadow-[0_5px_14px_-4px_rgba(255,212,38,0.5)]"
+                      : "bg-transparent"
+                  }`}
+                >
+                  <Icon size={18} weight={active ? "fill" : "duotone"} />
+                </span>
+                <span className={`text-[10px] leading-none tracking-[0.01em] ${active ? "font-semibold" : "font-medium"}`}>
+                  {t.label}
+                </span>
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-1.5 text-gray-500 transition-transform duration-150 hover:text-[#0D0D0D] active:scale-[0.96] dark:text-gray-400 dark:hover:text-white"
+          >
+            <span className="flex h-[30px] w-9 items-center justify-center rounded-[11px]">
+              <List size={18} weight="duotone" />
+            </span>
+            <span className="text-[10px] font-medium leading-none tracking-[0.01em]">More</span>
+          </button>
+        </div>
       </nav>
     </div>
   );
