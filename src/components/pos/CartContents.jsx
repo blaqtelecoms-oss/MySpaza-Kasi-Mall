@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Minus, Trash2, ShoppingCart, Tag, User, UserPlus, X, Search, ChevronRight } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingCart, Tag, User, UserPlus, X, Search, ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -129,9 +129,16 @@ export default function CartContents({
         <Button
           onClick={onCharge}
           disabled={cart.length === 0}
-          className="w-full h-14 text-lg font-bold bg-green-600 hover:bg-green-700 rounded-xl"
+          className="w-full h-16 rounded-2xl border-0 bg-gradient-to-b from-[#00C46A] to-[#009B4D] text-lg font-bold text-white shadow-lg shadow-emerald-900/25 transition-all hover:from-[#00D073] hover:to-[#00A859] hover:shadow-xl hover:shadow-emerald-900/30 active:scale-[0.99] disabled:from-gray-300 disabled:to-gray-400 disabled:shadow-none"
         >
-          Charge {formatCurrency(total)}
+          <span className="flex items-center justify-center gap-3">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 ring-1 ring-inset ring-white/35">
+              <Check size={18} strokeWidth={3} />
+            </span>
+            <span className="text-[1.05rem] tracking-tight">
+              Charge {formatCurrency(total)}
+            </span>
+          </span>
         </Button>
 
         {cart.length > 0 && (

@@ -118,15 +118,12 @@ export default function Layout() {
         }`}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <img src="/brand/logo.png" alt="MySpaza" className="w-10 h-10 rounded-xl object-cover" />
-            <div className="min-w-0">
-              <h1 className="text-white font-bold text-lg leading-none tracking-tight">MySpaza</h1>
-              <p className="text-[#FFD426] text-[10px] font-semibold mt-1 tracking-wide uppercase">
-                Your neighbourhood. Your store.
-              </p>
-            </div>
+        <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <img src="/brand/logo.png" alt="MySpaza" className="w-8 h-8 shrink-0 rounded-lg object-cover" />
+            <h1 className="text-white font-bold text-lg leading-none tracking-tight truncate">
+              MySpaza
+            </h1>
           </div>
           <div className="flex items-center gap-1">
             <button
