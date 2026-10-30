@@ -355,9 +355,15 @@ preview supplies has to exist there explicitly:
   "email rate limit exceeded" even though the hook works. It is a per-project
   setting (Auth → Rate Limits, or `PATCH /v1/projects/{ref}/config/auth`); this
   project runs at 200 per hour (Resend's plan limits still apply below it).
-- The hook URI points at the sandbox host `https://8000-$BASE44_PUBLIC_HOST_SUFFIX/...`,
-  so it must be pointed at the real domain on deploy (and re-pointed if the
-  sandbox is recreated).
+- The hook URI points at the **deployed** endpoint
+  `https://myspaza-app.co.za/api/hooks/supabase/send-email`, never at a sandbox
+  host: the sandbox public host rotates, and a stale URI there makes every
+  signup fail with `500 unexpected_failure "Service currently unavailable due to
+  hook"` (the account is not created). The project config is readable and
+  editable with `SUPABASE_ACCESS_TOKEN` from `/run/base44/app.env`
+  (`GET`/`PATCH https://api.supabase.com/v1/projects/<ref>/config/auth`,
+  field `hook_send_email_uri`). The deployed route accepts the same
+  `SUPABASE_SEND_EMAIL_HOOK_SECRET` the sandbox service uses.
 - `POST /api/webhooks/resend` stores every Resend event in `public.email_event`.
   `provider_event_id` (the Svix message id) is unique, so retries are idempotent.
 - Both routes verify the Standard Webhooks HMAC over the raw body

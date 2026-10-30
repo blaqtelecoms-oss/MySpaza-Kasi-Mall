@@ -73,8 +73,10 @@ so provider retries cannot duplicate history.
 1. **Resend** — verify the `myspaza-app.co.za` domain, create an API key with
    sending access and store it as `RESEND_API_KEY`.
 2. **Supabase Auth hook** — Dashboard → Authentication → Hooks → *Send Email* →
-   HTTPS endpoint `https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/hooks/supabase/send-email`
-   (locally: your tunnel or `localhost:8000` equivalent). Supabase displays a
+   HTTPS endpoint `https://myspaza-app.co.za/api/hooks/supabase/send-email`
+   (locally: your tunnel or `localhost:8000` equivalent). Use the deployed
+   domain, not a sandbox host — a stale sandbox URI makes every signup fail with
+   "Service currently unavailable due to hook". Supabase displays a
    `v1,whsec_…` secret — store the same value as `SUPABASE_SEND_EMAIL_HOOK_SECRET`.
    Once the hook is enabled Supabase stops sending its own auth emails, so the
    app keeps calling `verifyOtp`/`resend` unchanged; the code just arrives from
@@ -85,10 +87,13 @@ so provider retries cannot duplicate history.
 
 ### Sandbox vs deployed endpoints
 
-The sandbox public host changes whenever the environment is recreated. If
-verification emails or delivery events stop arriving, update the Supabase hook
-URI and the Resend webhook endpoint to
-`https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/...`.
+The sandbox public host changes whenever the environment is recreated. The
+Supabase *Send Email* hook therefore points at the deployed endpoint
+(`https://myspaza-app.co.za/api/hooks/supabase/send-email`) rather than a sandbox
+host — signup and password reset work from both the preview and the public site,
+and a recreated sandbox cannot break them. If Resend delivery events stop
+arriving, re-point the Resend webhook to
+`https://8000-$BASE44_PUBLIC_HOST_SUFFIX/api/webhooks/resend`.
 
 On the public site the same three paths are served at
 `https://myspaza-app.co.za/api/...` by `netlify/functions/api.mjs`, which runs the
