@@ -21,7 +21,19 @@ const HIGHLIGHTS = [
 
 export default function AuthLayout({ title, subtitle, footer, children }) {
   return (
-    <div className="min-h-screen bg-[#F5F6F8] text-slate-900 lg:grid lg:grid-cols-[1.05fr_1fr]">
+    <div className="relative min-h-screen bg-[#F5F6F8] text-slate-900 lg:grid lg:grid-cols-[1.05fr_1fr]">
+      {/* The panel below is desktop-only, so small screens get the same shop
+          photo as a washed-out page background instead of an empty canvas. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden lg:hidden">
+        <img
+          src="/brand/auth-bg.jpg"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-40 [filter:grayscale(0.35)_saturate(0.95)]"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(158deg,rgba(248,250,252,0.88)_0%,rgba(241,245,249,0.5)_34%,rgba(204,251,241,0.26)_64%,rgba(13,148,136,0.22)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(245,246,248,0.45)_0%,rgba(245,246,248,0.24)_34%,rgba(245,246,248,0.72)_72%,#F5F6F8_96%)]" />
+      </div>
+
       <aside className="relative hidden overflow-hidden border-r border-slate-200/80 bg-[#F7F9FA] px-14 py-12 lg:flex lg:flex-col lg:justify-between">
         {/* Shop photo, faded into the panel by a cool gradient wash */}
         <img
@@ -81,7 +93,7 @@ export default function AuthLayout({ title, subtitle, footer, children }) {
 
       </aside>
 
-      <main className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-8">
+      <main className="relative flex min-h-screen items-center justify-center px-5 py-10 sm:px-8">
         <div className="w-full max-w-[420px]">
           <div className="mb-7 flex items-center gap-3 lg:hidden">
             <img
