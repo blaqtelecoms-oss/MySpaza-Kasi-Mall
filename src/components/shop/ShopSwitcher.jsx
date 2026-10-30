@@ -46,9 +46,17 @@ export default function ShopSwitcher() {
         aria-label="Switch shop or branch"
         className="flex w-full items-center gap-2 rounded-xl bg-white/5 px-2.5 py-2 text-left ring-1 ring-white/10 transition hover:bg-white/10"
       >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#FFD426] text-[#0D0D0D]">
-          <Storefront size={15} weight="fill" />
-        </span>
+        {shop.shopLogo ? (
+          <img
+            src={shop.shopLogo}
+            alt={active?.name || "Shop logo"}
+            className="h-7 w-7 shrink-0 rounded-lg object-cover ring-1 ring-white/15"
+          />
+        ) : (
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#FFD426] text-[#0D0D0D]">
+            <Storefront size={15} weight="fill" />
+          </span>
+        )}
         <span className="min-w-0 flex-1">
           <span className="block truncate text-xs font-semibold text-white">{active?.name || "My shop"}</span>
           <span className="block text-[10px] text-white/45">

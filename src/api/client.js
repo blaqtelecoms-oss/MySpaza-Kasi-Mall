@@ -571,15 +571,16 @@ const shop = {
     const shopId = active?.shop_id || (await currentShopId());
     const shopRow = shops.find((row) => row.id === shopId) || null;
 
-    let shopName = shopRow?.name?.trim() || null;
-    if (!shopName) {
-      const { data: settings } = await supabase
-        .from("shop_settings")
-        .select("business")
-        .eq("created_by_id", shopId)
-        .maybeSingle();
-      shopName = settings?.business?.name?.trim() || null;
-    }
+    // The active shop's saved profile also carries its logo, which the sidebar
+    // and the profile button show in place of a generic icon.
+    const { data: shopProfile } = await supabase
+      .from("shop_settings")
+      .select("business,logo_url")
+      .eq("created_by_id", shopId)
+      .maybeSingle();
+
+    let shopName = shopRow?.name?.trim() || shopProfile?.business?.name?.trim() || null;
+    const shopLogo = shopProfile?.logo_url || "";
 
     if (!shopName) {
       const { data: profile } = await supabase
@@ -621,6 +622,7 @@ const shop = {
     return {
       shopId,
       shopName,
+      shopLogo,
       shops: shops.map((row) => ({
         id: row.id,
         name: row.name,

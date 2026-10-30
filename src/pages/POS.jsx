@@ -6,7 +6,7 @@ import QueryRefreshIndicator from "@/components/QueryRefreshIndicator";
 import {
   Search, ShoppingCart, Plus, Minus, Trash2, CreditCard, Banknote,
   X, CheckCircle, Printer, Send, Barcode, Grid, List,
-  RotateCcw, Pause, Tag, User, ChevronDown, WifiOff
+  RotateCcw, Pause, Tag, User, ChevronDown, WifiOff, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -479,9 +479,16 @@ export default function POS() {
             <Button
               onClick={completeSale}
               disabled={loading || (selectedPayment === "cash" && parseFloat(amountTendered) < total) || (isCredit && !selectedCustomer) || creditExceeded}
-              className="w-full h-14 text-lg font-bold bg-green-600 hover:bg-green-700"
+              className="w-full h-16 rounded-2xl border-0 bg-gradient-to-b from-[#00C46A] to-[#009B4D] text-lg font-bold text-white shadow-lg shadow-emerald-900/25 transition-all hover:from-[#00D073] hover:to-[#00A859] hover:shadow-xl hover:shadow-emerald-900/30 active:scale-[0.99] disabled:from-gray-300 disabled:to-gray-400 disabled:shadow-none"
             >
-              {loading ? "Processing..." : "✓ Complete Sale"}
+              <span className="flex items-center justify-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 ring-1 ring-inset ring-white/35">
+                  <Check size={18} strokeWidth={3} />
+                </span>
+                <span className="text-[1.05rem] tracking-tight">
+                  {loading ? "Processing…" : "Complete Sale"}
+                </span>
+              </span>
             </Button>
           </div>
         </DialogContent>

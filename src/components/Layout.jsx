@@ -120,19 +120,12 @@ export default function Layout() {
         {/* Logo */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <img src="/brand/logo.png" alt="My Spaza" className="w-10 h-10 rounded-xl object-cover" />
+            <img src="/brand/logo.png" alt="MySpaza" className="w-10 h-10 rounded-xl object-cover" />
             <div className="min-w-0">
-              <h1 className="text-white font-bold text-lg leading-none tracking-tight">My Spaza</h1>
-              <p className="text-white/50 text-xs truncate max-w-[9.5rem]">
-                {shop?.shopName || "Business Manager"}
+              <h1 className="text-white font-bold text-lg leading-none tracking-tight">MySpaza</h1>
+              <p className="text-[#FFD426] text-[10px] font-semibold mt-1 tracking-wide uppercase">
+                Your neighbourhood. Your store.
               </p>
-              {shop && !shop.isOwner ? (
-                <p className="text-[#FFD426] text-[10px] font-semibold mt-0.5 tracking-wide uppercase truncate max-w-[9.5rem]">
-                  {shop.role} · employee
-                </p>
-              ) : (
-                <p className="text-[#FFD426] text-[10px] font-semibold mt-0.5 tracking-wide uppercase">Your neighbourhood. Your store.</p>
-              )}
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -233,7 +226,15 @@ export default function Layout() {
                 aria-expanded={profileOpen}
                 className="w-8 h-8 bg-[#0D0D0D] rounded-full flex items-center justify-center ring-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD426] hover:opacity-90 transition-opacity"
               >
-                <span className="text-white text-sm font-bold">{userInitial}</span>
+                {shop?.shopLogo ? (
+                  <img
+                    src={shop.shopLogo}
+                    alt={shop.shopName || "Shop logo"}
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="text-white text-sm font-bold">{userInitial}</span>
+                )}
               </button>
 
               {profileOpen && (
