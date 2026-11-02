@@ -82,74 +82,81 @@ export default function InviteEmployeeDialog({ open, onOpenChange, onSent }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1.5rem)] max-w-lg flex-col gap-0 overflow-hidden rounded-2xl p-0">
+        <DialogHeader className="shrink-0 border-b border-border px-5 py-4 pr-12 text-left">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Mail size={18} /> Invite an employee
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <div>
-            <Label>Employee name *</Label>
-            <Input
-              className="mt-1"
-              placeholder="e.g. Thandi Nkosi"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-            />
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="invite-name">Employee name *</Label>
+              <Input
+                id="invite-name"
+                className="mt-1"
+                autoComplete="off"
+                placeholder="e.g. Thandi Nkosi"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="invite-email">Email address *</Label>
+              <Input
+                id="invite-email"
+                className="mt-1"
+                type="email"
+                inputMode="email"
+                autoComplete="off"
+                placeholder="employee@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                The invitation only works for this address, once, and expires in 7 days.
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="invite-salary">Monthly salary (R)</Label>
+              <Input
+                id="invite-salary"
+                className="mt-1"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="e.g. 4500"
+                value={monthlySalary}
+                onChange={(e) => setMonthlySalary(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Kept on the employee's record and shown on the Employees page.
+              </p>
+            </div>
+
+            <div>
+              <Label>Role *</Label>
+              <MobileSelect
+                value={role}
+                onValueChange={applyRole}
+                placeholder="Select role"
+                triggerClassName="mt-1"
+                options={ROLE_PRESETS.map((preset) => ({ value: preset.role, label: preset.role }))}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Choosing a role fills in typical access — adjust it below if needed.
+              </p>
+            </div>
           </div>
 
-          <div>
-            <Label>Email address *</Label>
-            <Input
-              className="mt-1"
-              type="email"
-              inputMode="email"
-              placeholder="employee@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              The invitation only works for this address, once, and expires in 7 days.
-            </p>
-          </div>
-
-          <div>
-            <Label>Monthly salary (R)</Label>
-            <Input
-              className="mt-1"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.01"
-              placeholder="e.g. 4500"
-              value={monthlySalary}
-              onChange={(e) => setMonthlySalary(e.target.value)}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Kept on the employee's record and shown on the Employees page.
-            </p>
-          </div>
-
-          <div>
-            <Label>Role *</Label>
-            <MobileSelect
-              value={role}
-              onValueChange={applyRole}
-              placeholder="Select role"
-              triggerClassName="mt-1"
-              options={ROLE_PRESETS.map((preset) => ({ value: preset.role, label: preset.role }))}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Choosing a role fills in typical access — adjust it below if needed.
-            </p>
-          </div>
-
-          <PermissionEditor permissions={permissions} onChange={setPermissions} />
+          <PermissionEditor permissions={permissions} onChange={setPermissions} scrollable={false} />
         </div>
 
-        <div className="flex gap-2 pt-2">
+        <div className="flex shrink-0 gap-2 border-t border-border bg-background px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
