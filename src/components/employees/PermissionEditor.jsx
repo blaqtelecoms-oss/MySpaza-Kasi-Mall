@@ -11,7 +11,7 @@ const LEVELS = [
  * Per-module access: `None` (not visible), `View` (read only) or `Edit` (may
  * create and change records). The database enforces the same three states.
  */
-export default function PermissionEditor({ permissions, onChange }) {
+export default function PermissionEditor({ permissions, onChange, scrollable = true }) {
   const setLevel = (key, level) => {
     const next = { ...permissions };
     if (!level) delete next[key];
@@ -44,7 +44,11 @@ export default function PermissionEditor({ permissions, onChange }) {
         </div>
       </div>
 
-      <div className="max-h-64 overflow-y-auto rounded-xl border border-border divide-y divide-border">
+      <div
+        className={`rounded-xl border border-border divide-y divide-border ${
+          scrollable ? "max-h-64 overflow-y-auto" : ""
+        }`}
+      >
         {MODULES.map((module) => {
           const current = permissions[module.key] || null;
           return (
