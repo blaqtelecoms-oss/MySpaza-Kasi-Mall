@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit, Mail, Trash2 } from "lucide-react";
+import { Edit, KeyRound, Mail, Trash2 } from "lucide-react";
 import { MODULE_LABELS } from "@/lib/modules";
 
 function ModuleChips({ permissions }) {
@@ -36,7 +36,7 @@ const salaryLabel = (value) =>
     : "R " + Number(value).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " / month";
 
 /** An employee who has accepted and can sign in to this shop. */
-export function EmployeeCard({ member, onEdit, onRevoke }) {
+export function EmployeeCard({ member, hasPortalPassword, onEdit, onRevoke }) {
   const displayName = member.full_name || member.member_email || "?";
   const initial = displayName.trim().charAt(0).toUpperCase();
   const salary = salaryLabel(member.monthly_salary);
@@ -56,7 +56,22 @@ export function EmployeeCard({ member, onEdit, onRevoke }) {
               <p className="mt-1 text-xs font-medium text-foreground">
                 {salary || <span className="font-normal text-muted-foreground">No salary set</span>}
               </p>
-              <Badge variant="outline" className="mt-1 text-xs">{member.role}</Badge>
+              <div className="mt-1 flex flex-wrap items-center gap-1">
+                <Badge variant="outline" className="text-xs">{member.role}</Badge>
+                {typeof hasPortalPassword === "boolean" && (
+                  <Badge
+                    variant="outline"
+                    className={
+                      hasPortalPassword
+                        ? "gap-1 border-teal-200 text-[11px] text-teal-700 dark:border-teal-900 dark:text-teal-400"
+                        : "gap-1 text-[11px] text-muted-foreground"
+                    }
+                  >
+                    <KeyRound size={11} aria-hidden="true" />
+                    {hasPortalPassword ? "Portal password" : "No portal password"}
+                  </Badge>
+                )}
+              </div>
               <div className="mt-1.5">
                 <ModuleChips permissions={member.permissions} />
               </div>

@@ -7,10 +7,12 @@ import { useEffect, lazy, Suspense } from 'react';
 import { ThemeProvider } from 'next-themes';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { PortalProvider } from '@/lib/PortalContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import OnboardingGate from '@/components/OnboardingGate';
+import PortalGate from '@/components/PortalGate';
 import { RequireOwner, RequireModule, RequirePlan } from '@/components/RequireAccess';
 import { SubscriptionProvider } from '@/lib/SubscriptionContext';
 import Layout from '@/components/Layout';
@@ -44,6 +46,7 @@ const AdminProductCopy = lazy(() => import('@/pages/AdminProductCopy'));
 const AcceptInvite = lazy(() => import('@/pages/AcceptInvite'));
 const AcceptGroupInvite = lazy(() => import('@/pages/AcceptGroupInvite'));
 const Onboarding = lazy(() => import('@/pages/Onboarding'));
+const PortalSelect = lazy(() => import('@/pages/PortalSelect'));
 
 const PageLoader = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -102,7 +105,9 @@ const AuthenticatedApp = () => {
           {/* First-run setup, outside the app shell: no sidebar, no menu to
               wander off into before the plan step is done. */}
           <Route path="/onboarding" element={<Onboarding />} />
-          <Route element={<OnboardingGate><Layout /></OnboardingGate>}>
+          {/* Which store and portal this session opens, right after sign-in. */}
+          <Route path="/portal" element={<OnboardingGate><PortalSelect /></OnboardingGate>} />
+          <Route element={<OnboardingGate><PortalGate><Layout /></PortalGate></OnboardingGate>}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/pos" element={<RequireModule module="pos"><POS /></RequireModule>} />
             <Route path="/inventory" element={<RequireModule module="inventory"><Inventory /></RequireModule>} />
@@ -145,10 +150,13 @@ function App() {
           {/* The shop's plan, plus the simulated checkout modal every paywall
               can open. */}
           <SubscriptionProvider>
-            <Router>
-              <ScrollToTop />
-              <AuthenticatedApp />
-            </Router>
+            {/* Which portal (owner or cashier) this session has open. */}
+            <PortalProvider>
+              <Router>
+                <ScrollToTop />
+                <AuthenticatedApp />
+              </Router>
+            </PortalProvider>
           </SubscriptionProvider>
           <Toaster />
         </PersistQueryClientProvider>

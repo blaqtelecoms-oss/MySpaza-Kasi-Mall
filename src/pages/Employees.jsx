@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
+import { useAuth } from "@/lib/AuthContext";
 import { useEntityQuery, useInvalidateEntity } from "@/hooks/useEntityQuery";
 import { Plus, UserCheck, Mail, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,10 +37,24 @@ export default function Employees() {
   const [revokeTarget, setRevokeTarget] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
   const { toast } = useToast();
+  const { shop } = useAuth();
+
+  // Which of this store's cashiers already have their own portal password.
+  const { data: passwordRows = [], refetch: refetchPasswords } = useQuery({
+    queryKey: ["cashier-passwords", shop?.shopId],
+    queryFn: () => api.shop.cashierPasswords(shop.shopId),
+    enabled: Boolean(shop?.shopId),
+  });
+
+  const passwordSet = useMemo(
+    () => new Set((passwordRows || []).map((row) => row.shop_member_id)),
+    [passwordRows]
+  );
 
   const refresh = () => {
     invalidate("ShopMember");
     invalidate("ShopInvite");
+    refetchPasswords();
   };
 
   const withEditAccess = members.filter((member) =>
@@ -132,6 +148,7 @@ export default function Employees() {
                 <EmployeeCard
                   key={member.id}
                   member={member}
+                  hasPortalPassword={passwordSet.has(member.id)}
                   onEdit={setEditMember}
                   onRevoke={setRevokeTarget}
                 />
@@ -158,7 +175,8 @@ export default function Employees() {
         <ShieldCheck size={15} className="mt-0.5 shrink-0" />
         <p>
           Employees only see what you grant them, in the menu and in the data. They can never open
-          Employees or Settings, and you can change or remove their access at any time.
+          Employees or Settings, and you can change or remove their access at any time. Each
+          cashier's own portal password is set under Edit access.
         </p>
       </div>
 
@@ -166,6 +184,7 @@ export default function Employees() {
 
       <EditEmployeeDialog
         member={editMember}
+        hasPassword={Boolean(editMember && passwordSet.has(editMember.id))}
         open={Boolean(editMember)}
         onOpenChange={(open) => !open && setEditMember(null)}
         onSaved={refresh}

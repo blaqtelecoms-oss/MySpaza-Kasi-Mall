@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   SquaresFour, ShoppingCart, Package, TrendUp, CurrencyDollar, UsersThree, Truck,
   ChartBar, GearSix, List, X, Bank, GraduationCap, Robot, CreditCard,
   Money, UserCheck, Calculator, ArrowsClockwise, Wallet, TrendDown, Receipt,
-  EnvelopeSimple, SignOut, StackPlus,
+  EnvelopeSimple, SignOut, StackPlus, ArrowsLeftRight,
 } from "@phosphor-icons/react";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useAuth } from "@/lib/AuthContext";
+import { usePortal } from "@/lib/PortalContext";
 import { queryClientInstance } from "@/lib/query-client";
 import OfflineBanner from "@/components/OfflineBanner";
 import ShopSwitcher from "@/components/shop/ShopSwitcher";
@@ -45,6 +46,8 @@ const navItems = [
 
 export default function Layout() {
   const { user, logout, shop, can } = useAuth();
+  const { portal, lockPortal } = usePortal();
+  const navigate = useNavigate();
   // Owners see every screen; an employee only the modules granted to them.
   const visibleNavItems = navItems.filter((item) => {
     if (item.adminOnly && user?.role !== "admin") return false;
@@ -77,10 +80,19 @@ export default function Layout() {
     if (signingOut) return;
     setSigningOut(true);
     try {
+      // Close the portal session too, so a shared till does not keep the shop
+      // open for whoever signs in next.
+      await lockPortal();
       await logout(true);
     } finally {
       setSigningOut(false);
     }
+  };
+
+  const handleSwitchPortal = async () => {
+    setProfileOpen(false);
+    await lockPortal();
+    navigate("/portal", { replace: true });
   };
 
   const handleRefresh = async () => {
@@ -237,7 +249,20 @@ export default function Layout() {
                         {shop.role} · {shop.shopName || "My shop"}
                       </p>
                     )}
+                    {portal && (
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                        {portal.method === "cashier" ? "Cashier portal" : "Owner portal"}
+                      </p>
+                    )}
                   </div>
+                  <button
+                    type="button"
+                    onClick={handleSwitchPortal}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <ArrowsLeftRight size={16} weight="duotone" />
+                    Switch portal
+                  </button>
                   <Link
                     to="/settings"
                     onClick={() => setProfileOpen(false)}
