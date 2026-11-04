@@ -332,6 +332,40 @@ helpers; the screen is `/admin/product-copy` ("Catalogue Copy" in the sidebar,
   when applying the set by hand. The imported tables (`product`, `sale`, …) and
   `profiles` are not in any migration — create them before replaying.
 
+## Store portals (owner / cashier)
+
+`supabase/migrations/20261106_shop_portals.sql` adds the portal gate; the screen
+is `/portal` (`src/pages/PortalSelect.jsx`) and it opens right after sign-in.
+
+- **The choice comes before the app.** `PortalGate` wraps the app shell in
+  `App.jsx`, so a signed-in account with no portal open is sent to `/portal`
+  before any screen renders. Onboarding still comes first for a new owner.
+- **Owner portal** is the owner's own account: `unlock_owner_portal(shop)` is
+  security definer and checks `is_shop_owner`, so an employee calling the RPC
+  directly gets `42501`.
+- **Cashier portal** asks for the password the owner sets per employee
+  (Employees → Edit access, `set_cashier_password` / `clear_cashier_password`).
+  Hashes live in `shop_cashier_access`, RLS on with **no policies**, so no client
+  can read a hash — only the definer functions touch it. Five wrong attempts lock
+  that cashier out for five minutes.
+- **The password gates the data, not only the screen:** `shop_module_level()`
+  calls `shop_portal_open(m.id, shop)`, and every app-table policy reads it. A
+  membership with no password stays open (the pre-portals behaviour), so applying
+  the migration locks nobody out. Opening the portal writes a
+  `shop_portal_session` (12 h); `close_portal()`, a password change and removing
+  the employee end it.
+- `shop_cashier_access.member_id` and the session rows key on the **`shop_member`
+  row id**, never the auth uid (`m.id`, not `m.member_id` in
+  `shop_module_level`). Mixing the two makes the gate silently never open.
+- `PortalContext` keeps the owner's choice in `sessionStorage`
+  (`myspaza:portal:<user id>`) and restores a cashier's from the database, so a
+  reload stays inside the portal. Sign out and "Switch portal" close it.
+- `/employees` needs the `employees` feature (Premium+), so verify the owner
+  side on a Premium/Ultra test shop. Verify the gate without a browser by
+  signing in through `/auth/v1/token?grant_type=password` as a test cashier:
+  the shop's tables return nothing until `unlock_cashier_portal` succeeds and
+  again after `close_portal`.
+
 ## Sandbox runtime (`docker-compose.base44.yml`)
 
 `docker compose -f docker-compose.base44.yml up -d` runs two services.

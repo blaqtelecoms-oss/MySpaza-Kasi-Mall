@@ -848,6 +848,75 @@ const shop = {
     if (error) throw new Error(error.message);
     return { id: memberId };
   },
+
+  /**
+   * Store portals (migration 20261106_shop_portals.sql). The password check and
+   * the session it opens happen in the database; every app table policy only
+   * counts an employee whose cashier session is open, so this is the real gate
+   * and not just the screen in front of it.
+   */
+
+  /** Owner portal: the account is the credential; SQL confirms store ownership. */
+  async openOwnerPortal(shopId) {
+    const { data, error } = await supabase.rpc("unlock_owner_portal", { p_shop: shopId });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Cashier portal: verifies this cashier's own password. */
+  async openCashierPortal(shopId, password) {
+    const { data, error } = await supabase.rpc("unlock_cashier_portal", {
+      p_shop: shopId,
+      p_password: password || "",
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** The signed-in account's open portal session (null when there is none). */
+  async portalSession() {
+    const { data, error } = await supabase.rpc("current_portal_session");
+    if (error) throw new Error(error.message);
+    return data ?? null;
+  },
+
+  /** End the portal session (sign out, or switch portal). */
+  async closePortal() {
+    const { error } = await supabase.rpc("close_portal");
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  },
+
+  /** Employee: does this store require a password from me, and is one set? */
+  async cashierAccess(shopId) {
+    const { data, error } = await supabase.rpc("my_cashier_access", { p_shop: shopId });
+    if (error) throw new Error(error.message);
+    return data ?? null;
+  },
+
+  /** Owner: set the individual password a cashier uses for their portal. */
+  async setCashierPassword(memberId, password) {
+    const { data, error } = await supabase.rpc("set_cashier_password", {
+      p_member_id: memberId,
+      p_password: password,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Owner: drop the password, so that cashier opens the portal with no prompt. */
+  async clearCashierPassword(memberId) {
+    const { data, error } = await supabase.rpc("clear_cashier_password", { p_member_id: memberId });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Owner: which employees of this store already have a cashier password. */
+  async cashierPasswords(shopId) {
+    const { data, error } = await supabase.rpc("cashier_password_status", { p_shop: shopId });
+    if (error) throw new Error(error.message);
+    return Array.isArray(data) ? data : [];
+  },
 };
 
 /**
