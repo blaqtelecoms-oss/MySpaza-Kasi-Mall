@@ -19,10 +19,12 @@ export const FEATURES = [
   { key: "funding", label: "Funding Hub", plan: "free" },
   { key: "myspaza_card", label: "MySpaza Card", plan: "free" },
   { key: "ads", label: "Ads", plan: "free" },
-  { key: "employees", label: "Employees", plan: "premium" },
+  // Staff management is on every plan: the plan decides how many cashiers and
+  // supervisors a store may run (see STAFF_LIMITS), not whether it has staff.
+  { key: "employees", label: "Employees", plan: "free" },
   { key: "reports", label: "Reports", plan: "premium" },
   { key: "coach", label: "Spaza Coach (AI Assistant)", plan: "premium" },
-  { key: "customers", label: "Customers", plan: "premium" },
+  { key: "customers", label: "Customers", plan: "free" },
   { key: "debtors", label: "Debtors Control", plan: "ultra" },
   { key: "accounting", label: "Accounting", plan: "ultra" },
   { key: "banking", label: "Banking", plan: "ultra" },
@@ -37,6 +39,17 @@ const RANK = { free: 0, premium: 1, ultra: 2 };
  */
 export const SHOP_LIMITS = { free: 1, premium: 2, ultra: null };
 
+/**
+ * How many staff portals a plan may run, per role (`null` = unlimited).
+ * `public.shop_staff_limit()` in 20261108_cashier_roles_and_access.sql enforces
+ * the same numbers when a portal is added or given another role.
+ */
+export const STAFF_LIMITS = {
+  free: { cashier: 1, supervisor: 0 },
+  premium: { cashier: 2, supervisor: 1 },
+  ultra: { cashier: null, supervisor: null },
+};
+
 export const PLANS = [
   {
     key: "free",
@@ -50,7 +63,9 @@ export const PLANS = [
     features: FEATURES.filter((f) => f.plan === "free").map((f) => f.label),
     highlights: [
       "1 shop or branch",
+      "1 cashier portal",
       "POS, Inventory, Cash Up & Daily Sales",
+      "Customers & credit tracking",
       "Expenses, Suppliers & Academy",
       "Supported by occasional ads",
     ],
@@ -67,9 +82,10 @@ export const PLANS = [
     features: FEATURES.filter((f) => RANK[f.plan] <= RANK.premium).map((f) => f.label),
     highlights: [
       "2 shops or branches",
+      "2 cashier portals + 1 supervisor",
       "No ads",
-      "Everything in Free, plus Employees",
-      "Reports, Customers & Spaza Coach AI",
+      "Everything in Free, plus Reports",
+      "Spaza Coach AI",
     ],
   },
   {
@@ -84,6 +100,7 @@ export const PLANS = [
     features: FEATURES.map((f) => f.label),
     highlights: [
       "Unlimited shops or branches",
+      "Unlimited cashiers & supervisors",
       "No ads",
       "Everything in Premium, plus Debtors & Accounting",
       "Banking and the full reports suite",
@@ -129,6 +146,28 @@ export function shopCountLabel(planKey) {
   const limit = shopLimit(planKey);
   if (limit === null) return "Unlimited shops";
   return `${limit} shop${limit === 1 ? "" : "s"}`;
+}
+
+/** How many cashier or supervisor portals this plan may run; `null` = unlimited. */
+export function staffLimit(planKey, role) {
+  const limits = planKey in STAFF_LIMITS ? STAFF_LIMITS[planKey] : STAFF_LIMITS.free;
+  // Ultra is an explicit `null`, so `??` would wrongly fall back to Free here.
+  if (role in limits) return limits[role];
+  return STAFF_LIMITS.free[role];
+}
+
+/** The next plan up, or `null` when this is already the top tier. */
+export function nextPlanKey(planKey) {
+  return PLAN_KEYS[planRank(planKey) + 1] || null;
+}
+
+/** "1 cashier portal", "2 supervisor portals", "Unlimited cashier portals". */
+export function staffLimitLabel(planKey, role) {
+  const limit = staffLimit(planKey, role);
+  const noun = role === "supervisor" ? "supervisor" : "cashier";
+  if (limit === null) return `Unlimited ${noun} portals`;
+  if (limit === 0) return `No ${noun} portals`;
+  return `${limit} ${noun} portal${limit === 1 ? "" : "s"}`;
 }
 
 /** A paid period runs 30 days from the confirmed payment, then a 7-day grace. */

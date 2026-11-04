@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { usePortal } from "@/lib/PortalContext";
-import { canCashierOpen } from "@/lib/portalAccess";
+import { portalCanOpen, portalHomePath } from "@/lib/portalAccess";
 
 /**
  * After signing in, the app asks which store and portal the person is opening.
@@ -27,10 +27,12 @@ export default function PortalGate({ children }) {
   if (!portal) return <Navigate to="/portal" replace />;
   if (portal.shopId !== shop.shopId) return <Navigate to="/portal" replace />;
 
-  // The cashier portal is the till, not the shop: the owner screens stay shut
-  // until the owner portal's password is entered.
-  if (portal.method === "cashier" && !canCashierOpen(location.pathname)) {
-    return <Navigate to="/pos" replace />;
+  // A cashier or supervisor portal only opens the screens the owner granted
+  // it; everything else goes back to the portal's landing screen.
+  if (portal.method === "cashier" && !portalCanOpen(portal, location.pathname)) {
+    const home = portalHomePath(portal);
+    if (location.pathname === home) return children;
+    return <Navigate to={home} replace />;
   }
 
   return children;

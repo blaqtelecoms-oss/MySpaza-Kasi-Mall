@@ -17,6 +17,8 @@ export const AuthProvider = ({ children }) => {
   // them), with the role and modules the owner granted.
   const [shopContext, setShopContext] = useState(null);
   const shopContextRef = useRef(null);
+  // The account whose sign-in is already in the audit log for this page load.
+  const auditSignInRef = useRef(null);
 
   // Reads the membership. An employee who loses access must not keep the shop's
   // cached records on this device, so a change of shop clears the cache.
@@ -85,9 +87,22 @@ export const AuthProvider = ({ children }) => {
     try {
       const currentUser = await api.auth.me();
       setUser(currentUser);
-      await refreshShop();
+      const nextShop = await refreshShop();
       setIsAuthenticated(true);
       setAuthError(currentUser.disabled ? { type: 'user_not_registered', message: 'Account disabled' } : null);
+      // One sign-in entry per account per page load, so a token refresh or a
+      // re-render does not fill the shop's log with duplicates.
+      if (nextShop?.shopId && auditSignInRef.current !== currentUser.id) {
+        auditSignInRef.current = currentUser.id;
+        api.audit
+          .log({
+            shopId: nextShop.shopId,
+            category: 'auth',
+            action: 'sign_in',
+            summary: 'Signed in',
+          })
+          .catch(() => {});
+      }
     } catch (error) {
       console.error('User auth check failed:', error);
       setUser(null);
@@ -134,6 +149,22 @@ export const AuthProvider = ({ children }) => {
   }, [checkUserAuth]);
 
   const logout = useCallback(async (shouldRedirect = true) => {
+    // Record the sign-out while the session still exists, otherwise the log
+    // cannot say who left.
+    const leavingShop = shopContextRef.current;
+    if (leavingShop?.shopId) {
+      try {
+        await api.audit.log({
+          shopId: leavingShop.shopId,
+          category: 'auth',
+          action: 'sign_out',
+          summary: 'Signed out',
+        });
+      } catch {
+        /* offline: signing out must still work */
+      }
+    }
+    auditSignInRef.current = null;
     setUser(null);
     setShopContext(null);
     shopContextRef.current = null;

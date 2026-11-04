@@ -5,13 +5,14 @@ import {
   SquaresFour, ShoppingCart, Package, TrendUp, CurrencyDollar, UsersThree, Truck,
   ChartBar, GearSix, List, X, Bank, GraduationCap, Robot, CreditCard,
   Money, UserCheck, Calculator, ArrowsClockwise, Wallet, TrendDown, Receipt,
-  EnvelopeSimple, SignOut, StackPlus, ArrowsLeftRight,
+  EnvelopeSimple, SignOut, StackPlus, ArrowsLeftRight, ClipboardText,
 } from "@phosphor-icons/react";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import AuditTrail from "@/components/AuditTrail";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useAuth } from "@/lib/AuthContext";
 import { usePortal } from "@/lib/PortalContext";
-import { CASHIER_PATHS } from "@/lib/portalAccess";
+import { portalPaths, roleLabel } from "@/lib/portalAccess";
 import { queryClientInstance } from "@/lib/query-client";
 import OfflineBanner from "@/components/OfflineBanner";
 import ShopSwitcher from "@/components/shop/ShopSwitcher";
@@ -32,6 +33,7 @@ const navItems = [
   { icon: UsersThree, label: "Customers", path: "/customers", module: "customers" },
   { icon: TrendDown, label: "Debtors Control", path: "/debtors", module: "debtors" },
   { icon: UserCheck, label: "Employees", path: "/employees", ownerOnly: true },
+  { icon: ClipboardText, label: "Audit Log", path: "/audit-log", ownerOnly: true },
   { icon: ChartBar, label: "Reports", path: "/reports", module: "reports" },
   { icon: GraduationCap, label: "Academy", path: "/academy", module: "academy" },
   { icon: Calculator, label: "Calculators", path: "/calculators", module: "calculators" },
@@ -49,11 +51,13 @@ export default function Layout() {
   const { user, logout, shop, can } = useAuth();
   const { portal, lockPortal } = usePortal();
   const navigate = useNavigate();
-  // The cashier portal is the till only. Anyone else sees the owner screens or,
-  // for an employee account, the modules the owner granted them.
+  // A cashier or supervisor portal shows only the screens the owner granted
+  // that portal. Anyone else sees the owner screens or, for an employee
+  // account, the modules the owner granted them.
   const cashierMode = portal?.method === "cashier";
+  const cashierNavPaths = cashierMode ? portalPaths(portal) : null;
   const visibleNavItems = navItems.filter((item) => {
-    if (cashierMode) return CASHIER_PATHS.includes(item.path);
+    if (cashierMode) return cashierNavPaths.includes(item.path);
     if (item.adminOnly && user?.role !== "admin") return false;
     if (item.ownerOnly && !shop?.isOwner) return false;
     if (item.module && !can(item.module)) return false;
@@ -118,6 +122,8 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
+      {/* Records each screen opened in the shop's audit log. */}
+      <AuditTrail />
       {/* Sidebar Overlay */}
       {sidebarOpen && (
         <div
@@ -256,7 +262,7 @@ export default function Layout() {
                     {portal && (
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
                         {portal.method === "cashier"
-                          ? `Cashier portal${portal.cashierName ? ` · ${portal.cashierName}` : ""}`
+                          ? `${roleLabel(portal.role)} portal${portal.cashierName ? ` · ${portal.cashierName}` : ""}`
                           : "Owner portal"}
                       </p>
                     )}

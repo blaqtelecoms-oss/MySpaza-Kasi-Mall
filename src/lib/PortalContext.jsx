@@ -17,6 +17,8 @@ function fromSession(session) {
     shopId: session.shop_id,
     cashierId: session.cashier_id || null,
     cashierName: session.cashier_name || null,
+    role: session.cashier_role || null,
+    permissions: session.cashier_permissions || null,
     expiresAt: session.expires_at || null,
   };
 }
@@ -67,14 +69,19 @@ export function PortalProvider({ children }) {
         shopId,
         cashierId: null,
         cashierName: null,
+        role: null,
+        permissions: null,
         expiresAt: data.expires_at || null,
       });
+      api.audit
+        .log({ shopId, category: "portal", action: "portal_open", summary: "Opened the owner portal" })
+        .catch(() => {});
       await queryClientInstance.invalidateQueries();
     }
     return data;
   }, []);
 
-  /** Cashier portal: opens only with the chosen cashier's own password. */
+  /** Cashier portal: opens only with the chosen portal's own password. */
   const openCashierPortal = useCallback(async (shopId, cashierId, password) => {
     const data = await api.shop.openCashierPortal(shopId, cashierId, password);
     if (data?.ok) {
@@ -83,9 +90,20 @@ export function PortalProvider({ children }) {
         shopId,
         cashierId: data.cashier_id || cashierId,
         cashierName: data.cashier_name || null,
+        role: data.cashier_role || null,
+        permissions: data.cashier_permissions || null,
         expiresAt: data.expires_at || null,
       });
       // The session is what lets the shop's tables through, so refetch them.
+      const role = data.cashier_role || "cashier";
+      api.audit
+        .log({
+          shopId,
+          category: "portal",
+          action: "portal_open",
+          summary: `Opened the ${role} portal${data.cashier_name ? ` · ${data.cashier_name}` : ""}`,
+        })
+        .catch(() => {});
       await queryClientInstance.invalidateQueries();
     }
     return data;
@@ -93,13 +111,25 @@ export function PortalProvider({ children }) {
 
   /** Leave the portal (and end its session in the database). */
   const lockPortal = useCallback(async () => {
+    // Logged before the session closes, so the entry names the portal and role
+    // that were actually open.
+    if (shop?.shopId) {
+      api.audit
+        .log({
+          shopId: shop.shopId,
+          category: "portal",
+          action: "portal_close",
+          summary: portal?.method === "cashier" ? `Closed the ${portal.role || "cashier"} portal` : "Closed the owner portal",
+        })
+        .catch(() => {});
+    }
     try {
       await api.shop.closePortal();
     } catch {
       /* offline or signing out anyway: the client state still closes */
     }
     setPortal(null);
-  }, []);
+  }, [shop?.shopId, portal]);
 
   return (
     <PortalContext.Provider value={{ portal, loading, openOwnerPortal, openCashierPortal, lockPortal }}>
