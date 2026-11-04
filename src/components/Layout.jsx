@@ -355,7 +355,10 @@ export default function Layout() {
             { icon: ShoppingCart, label: "POS", path: "/pos", module: "pos" },
             { icon: Package, label: "Stock", path: "/inventory", module: "inventory" },
             { icon: Wallet, label: "Card", path: "/myspaza-card", module: "myspaza_card" },
-          ].filter(t => !t.module || can(t.module)).map(t => {
+          ].filter(t => (cashierMode
+            ? Boolean(t.module) && cashierNavPaths.includes(t.path)
+            : !t.module || can(t.module)
+          )).map(t => {
             const Icon = t.icon;
             const active = location.pathname === t.path;
             return (

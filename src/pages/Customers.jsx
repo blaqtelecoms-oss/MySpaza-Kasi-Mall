@@ -10,6 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import ViewOnlyNotice from "@/components/ViewOnlyNotice";
+import { useModuleAccess } from "@/lib/useModuleAccess";
 import { useToast } from "@/components/ui/use-toast";
 
 const formatCurrency = (n) => `R ${(n || 0).toFixed(2)}`;
@@ -27,11 +29,14 @@ export default function Customers() {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const { toast } = useToast();
+  const { canEdit } = useModuleAccess();
+  const readOnly = !canEdit("customers");
 
-  const openNew = () => { setEditItem(null); setForm(empty); setModalOpen(true); };
-  const openEdit = (c) => { setEditItem(c); setForm({...c}); setModalOpen(true); };
+  const openNew = () => { if (readOnly) return; setEditItem(null); setForm(empty); setModalOpen(true); };
+  const openEdit = (c) => { if (readOnly) return; setEditItem(c); setForm({...c}); setModalOpen(true); };
 
   const handleSave = async () => {
+    if (readOnly) return;
     if (!form.name) { toast({ title: "Name required", variant: "destructive" }); return; }
     setSaving(true);
     try {
@@ -52,7 +57,7 @@ export default function Customers() {
   const handleDelete = (c) => setDeleteTarget(c);
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (readOnly || !deleteTarget) return;
     await api.entities.Customer.delete(deleteTarget.id);
     setDeleteTarget(null);
     invalidateCustomer("Customer");
@@ -70,8 +75,12 @@ export default function Customers() {
           </div>
           <p className="text-sm text-muted-foreground">{customers.length} registered customers</p>
         </div>
-        <Button onClick={openNew} className="gap-2 bg-green-600 hover:bg-green-700"><Plus size={16} /> Add Customer</Button>
+        {!readOnly && (
+          <Button onClick={openNew} className="gap-2 bg-green-600 hover:bg-green-700"><Plus size={16} /> Add Customer</Button>
+        )}
       </div>
+
+      {readOnly && <ViewOnlyNotice screen="Customers" />}
 
       <Input placeholder="Search customers..." value={search} onChange={e => setSearch(e.target.value)} />
 
@@ -81,7 +90,9 @@ export default function Customers() {
         <div className="text-center py-12 bg-card rounded-2xl border border-border">
           <Users size={48} className="mx-auto text-muted-foreground mb-3" />
           <p className="text-muted-foreground">No customers yet</p>
-          <Button onClick={openNew} className="mt-3 bg-green-600 hover:bg-green-700">Add Customer</Button>
+          {!readOnly && (
+            <Button onClick={openNew} className="mt-3 bg-green-600 hover:bg-green-700">Add Customer</Button>
+          )}
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-3">
@@ -110,14 +121,16 @@ export default function Customers() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => openEdit(c)}>
-                      <Edit size={18} className="text-foreground" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => handleDelete(c)}>
-                      <Trash2 size={15} className="text-red-400" />
-                    </Button>
-                  </div>
+                  {!readOnly && (
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => openEdit(c)}>
+                        <Edit size={18} className="text-foreground" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => handleDelete(c)}>
+                        <Trash2 size={15} className="text-red-400" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

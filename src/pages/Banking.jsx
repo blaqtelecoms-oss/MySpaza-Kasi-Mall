@@ -10,6 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MobileSelect } from "@/components/ui/mobile-select";
+import ViewOnlyNotice from "@/components/ViewOnlyNotice";
+import { useModuleAccess } from "@/lib/useModuleAccess";
 import { useToast } from "@/components/ui/use-toast";
 
 const formatCurrency = (n) => `R ${(n || 0).toFixed(2)}`;
@@ -31,11 +33,14 @@ export default function Banking() {
   const [depositAccount, setDepositAccount] = useState("");
   const [depositNote, setDepositNote] = useState("");
   const { toast } = useToast();
+  const { canEdit } = useModuleAccess();
+  const readOnly = !canEdit("banking");
 
-  const openNew = () => { setEditItem(null); setForm(emptyAccount); setModalOpen(true); };
-  const openEdit = (a) => { setEditItem(a); setForm({...a}); setModalOpen(true); };
+  const openNew = () => { if (readOnly) return; setEditItem(null); setForm(emptyAccount); setModalOpen(true); };
+  const openEdit = (a) => { if (readOnly) return; setEditItem(a); setForm({...a}); setModalOpen(true); };
 
   const handleSave = async () => {
+    if (readOnly) return;
     if (!form.bank_name || !form.account_name) { toast({ title: "Required fields missing", variant: "destructive" }); return; }
     setSaving(true);
     try {
@@ -54,6 +59,7 @@ export default function Banking() {
   };
 
   const handleDeposit = async () => {
+    if (readOnly) return;
     if (!depositAmount || !depositAccount) { toast({ title: "Please fill all fields", variant: "destructive" }); return; }
     const account = accounts.find(a => a.id === depositAccount);
     if (!account) return;
@@ -80,28 +86,34 @@ export default function Banking() {
           </div>
           <p className="text-sm text-muted-foreground">Total balance: <span className="font-bold text-green-700 dark:text-green-400">{formatCurrency(totalBalance)}</span></p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setDepositModal(true)} variant="outline" className="hidden gap-2 sm:flex">
-            <ArrowDownLeft size={16} /> Deposit
-          </Button>
-          <Button onClick={openNew} className="gap-2 bg-green-600 hover:bg-green-700">
-            <Plus size={16} /> Add Account
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="flex gap-2">
+            <Button onClick={() => setDepositModal(true)} variant="outline" className="hidden gap-2 sm:flex">
+              <ArrowDownLeft size={16} /> Deposit
+            </Button>
+            <Button onClick={openNew} className="gap-2 bg-green-600 hover:bg-green-700">
+              <Plus size={16} /> Add Account
+            </Button>
+          </div>
+        )}
       </div>
+
+      {readOnly && <ViewOnlyNotice screen="Banking" />}
 
       {/* Total Balance Card */}
       <div className="bg-gradient-to-r from-[#0D0D0D] to-[#1c1c1c] rounded-2xl p-4 text-white sm:p-6">
         <p className="text-sm text-white/60">Total Bank Balance</p>
         <p className="mt-1 text-3xl font-bold tabular-nums sm:text-4xl">{formatCurrency(totalBalance)}</p>
-        <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
-          <button onClick={() => setDepositModal(true)} className="flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-xl px-4 py-2 text-sm transition">
-            <ArrowDownLeft size={16} /> Deposit
-          </button>
-          <button className="flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-xl px-4 py-2 text-sm transition">
-            <ArrowUpRight size={16} /> Withdraw
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
+            <button onClick={() => setDepositModal(true)} className="flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-xl px-4 py-2 text-sm transition">
+              <ArrowDownLeft size={16} /> Deposit
+            </button>
+            <button className="flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-xl px-4 py-2 text-sm transition">
+              <ArrowUpRight size={16} /> Withdraw
+            </button>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -110,7 +122,9 @@ export default function Banking() {
         <div className="text-center py-12 bg-card rounded-2xl border border-border">
           <Building2 size={48} className="mx-auto text-muted-foreground mb-3" />
           <p className="text-muted-foreground">No bank accounts added yet</p>
-          <Button onClick={openNew} className="mt-3 bg-green-600 hover:bg-green-700">Add Bank Account</Button>
+          {!readOnly && (
+            <Button onClick={openNew} className="mt-3 bg-green-600 hover:bg-green-700">Add Bank Account</Button>
+          )}
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-3">
@@ -133,11 +147,13 @@ export default function Banking() {
                   </div>
                   <div className="text-right">
                     <p className="text-xl font-bold text-green-700 dark:text-green-400">{formatCurrency(account.current_balance)}</p>
-                    <div className="flex gap-1 justify-end mt-1">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(account)}>
-                        <Edit size={14} className="text-foreground" />
-                      </Button>
-                    </div>
+                    {!readOnly && (
+                      <div className="flex gap-1 justify-end mt-1">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(account)} aria-label="Edit account">
+                          <Edit size={14} className="text-foreground" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

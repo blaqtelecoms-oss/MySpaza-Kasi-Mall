@@ -14,7 +14,7 @@ const fmt = (a) => "R " + Number(a || 0).toLocaleString("en-ZA", { minimumFracti
 
 const CATEGORIES = ["Wholesale", "Hardware", "Cash & Carry", "Grocery", "Other"];
 
-export default function DiscountsTab() {
+export default function DiscountsTab({ readOnly = false }) {
   const wholesalersQuery = useEntityQuery("Wholesaler", "list", []);
   const discountsQuery = useEntityQuery("WholesalerDiscount", "list", []);
   const wholesalers = wholesalersQuery.data || [];
@@ -33,9 +33,11 @@ export default function DiscountsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">Wholesalers offering card discounts. Set discount tiers based on purchase amount.</p>
-        <Button size="sm" onClick={() => setWsModal(true)} className="bg-green-600 hover:bg-green-700">
-          <Plus size={16} /> Add Wholesaler
-        </Button>
+        {!readOnly && (
+          <Button size="sm" onClick={() => setWsModal(true)} className="bg-green-600 hover:bg-green-700">
+            <Plus size={16} /> Add Wholesaler
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -62,21 +64,28 @@ export default function DiscountsTab() {
                     </div>
                   </div>
                 </div>
-                <button onClick={async () => {
-                  await api.entities.Wholesaler.delete(ws.id);
-                  load();
-                }}><Trash2 size={16} className="text-red-400 hover:text-red-600" /></button>
+                {!readOnly && (
+                  <button
+                    onClick={async () => {
+                      await api.entities.Wholesaler.delete(ws.id);
+                      load();
+                    }}
+                    aria-label={`Remove ${ws.name}`}
+                  ><Trash2 size={16} className="text-red-400 hover:text-red-600" /></button>
+                )}
               </div>
 
               <div className="mt-3 border-t pt-3">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-semibold text-gray-600 flex items-center gap-1"><Tag size={13} /> Discount Tiers</p>
-                  <button
-                    onClick={() => setDiscModal({ wholesaler: ws })}
-                    className="text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
-                  >
-                    <Plus size={13} /> Add Tier
-                  </button>
+                  {!readOnly && (
+                    <button
+                      onClick={() => setDiscModal({ wholesaler: ws })}
+                      className="text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
+                    >
+                      <Plus size={13} /> Add Tier
+                    </button>
+                  )}
                 </div>
                 {discountsFor(ws.id).length === 0 ? (
                   <p className="text-xs text-gray-400 italic">No discount tiers set. Add one to give card holders a discount.</p>
@@ -89,12 +98,14 @@ export default function DiscountsTab() {
                           <span className="text-xs text-gray-500"> on purchases over {fmt(d.min_purchase_amount)}</span>
                           {d.tier_name && <Badge variant="outline" className="ml-2 text-[10px]">{d.tier_name}</Badge>}
                         </div>
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => setDiscModal({ edit: d })}><Pencil size={13} className="text-gray-400 hover:text-gray-600" /></button>
-                          <button onClick={async () => { await api.entities.WholesalerDiscount.delete(d.id); load(); }}>
-                            <Trash2 size={13} className="text-red-400 hover:text-red-600" />
-                          </button>
-                        </div>
+                        {!readOnly && (
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => setDiscModal({ edit: d })} aria-label="Edit tier"><Pencil size={13} className="text-gray-400 hover:text-gray-600" /></button>
+                            <button onClick={async () => { await api.entities.WholesalerDiscount.delete(d.id); load(); }} aria-label="Delete tier">
+                              <Trash2 size={13} className="text-red-400 hover:text-red-600" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

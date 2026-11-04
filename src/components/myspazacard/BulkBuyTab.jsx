@@ -23,7 +23,7 @@ const STATUS_COLOR = {
   cancelled: "bg-red-100 text-red-700",
 };
 
-export default function BulkBuyTab() {
+export default function BulkBuyTab({ readOnly = false }) {
   const ordersQuery = useEntityQuery("BulkBuy", "list", []);
   const wholesalersQuery = useEntityQuery("Wholesaler", "list", []);
   const orders = ordersQuery.data || [];
@@ -54,7 +54,9 @@ export default function BulkBuyTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">Buy in bulk from a wholesaler with other shop owners and share the stock.</p>
-        <Button size="sm" onClick={() => setModal(true)} className="bg-green-600 hover:bg-green-700"><Plus size={16} /> New Bulk Buy</Button>
+        {!readOnly && (
+          <Button size="sm" onClick={() => setModal(true)} className="bg-green-600 hover:bg-green-700"><Plus size={16} /> New Bulk Buy</Button>
+        )}
       </div>
 
       {loading ? <div className="text-center py-8 text-gray-400">Loading...</div> : orders.length === 0 ? (
@@ -101,7 +103,7 @@ export default function BulkBuyTab() {
                 <div className="flex items-center gap-1">
                   {o.invited ? (
                     <Badge variant="outline" className="text-[10px]">member</Badge>
-                  ) : (
+                  ) : readOnly ? null : (
                     <>
                       {o.status === "open" && (
                         <Button size="sm" variant="outline" className="text-green-700 border-green-200 h-8" onClick={() => setJoinOrder(o)}>

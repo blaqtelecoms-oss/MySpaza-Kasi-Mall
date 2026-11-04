@@ -10,6 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import ViewOnlyNotice from "@/components/ViewOnlyNotice";
+import { useModuleAccess } from "@/lib/useModuleAccess";
 import { useToast } from "@/components/ui/use-toast";
 import DevlandCatalog from "@/components/suppliers/DevlandCatalog";
 
@@ -29,11 +31,15 @@ export default function Suppliers() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const { toast } = useToast();
+  const { canEdit } = useModuleAccess();
+  const readOnly = !canEdit("suppliers");
+  const canAddStock = canEdit("inventory");
 
-  const openNew = () => { setEditItem(null); setForm(empty); setModalOpen(true); };
-  const openEdit = (s) => { setEditItem(s); setForm({...s}); setModalOpen(true); };
+  const openNew = () => { if (readOnly) return; setEditItem(null); setForm(empty); setModalOpen(true); };
+  const openEdit = (s) => { if (readOnly) return; setEditItem(s); setForm({...s}); setModalOpen(true); };
 
   const handleSave = async () => {
+    if (readOnly) return;
     if (!form.name) { toast({ title: "Name required", variant: "destructive" }); return; }
     setSaving(true);
     try {
@@ -56,7 +62,7 @@ export default function Suppliers() {
   const handleDelete = (s) => setDeleteTarget(s);
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (readOnly || !deleteTarget) return;
     await api.entities.Supplier.delete(deleteTarget.id);
     setDeleteTarget(null);
     invalidateSupplier("Supplier");
@@ -75,8 +81,12 @@ export default function Suppliers() {
           </div>
           <p className="text-sm text-muted-foreground">Total outstanding: <span className="font-semibold text-red-600 dark:text-red-400">{formatCurrency(totalOwed)}</span></p>
         </div>
-        <Button onClick={openNew} className="gap-2 bg-green-600 hover:bg-green-700"><Plus size={16} /> Add Supplier</Button>
+        {!readOnly && (
+          <Button onClick={openNew} className="gap-2 bg-green-600 hover:bg-green-700"><Plus size={16} /> Add Supplier</Button>
+        )}
       </div>
+
+      {readOnly && <ViewOnlyNotice screen="Suppliers" />}
 
       {/* Devland Wholesale Banner */}
       <div className="flex items-center gap-3 bg-gradient-to-r from-[#0D0D0D] to-[#1c1c1c] rounded-2xl p-4 text-white">
@@ -104,7 +114,9 @@ export default function Suppliers() {
         <div className="text-center py-12 bg-card rounded-2xl border border-border">
           <Truck size={48} className="mx-auto text-muted-foreground mb-3" />
           <p className="text-muted-foreground">No suppliers added yet</p>
-          <Button onClick={openNew} className="mt-3 bg-green-600 hover:bg-green-700">Add Supplier</Button>
+          {!readOnly && (
+            <Button onClick={openNew} className="mt-3 bg-green-600 hover:bg-green-700">Add Supplier</Button>
+          )}
         </div>
       ) : (
         <div className="grid gap-3">
@@ -150,14 +162,16 @@ export default function Suppliers() {
                     {(s.outstanding_balance || 0) > 0 && (
                       <Badge className="bg-red-100 text-red-700 mb-2 block">{formatCurrency(s.outstanding_balance)} owed</Badge>
                     )}
-                    <div className="flex gap-1 justify-end">
-                      <Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => openEdit(s)}>
-                        <Edit size={18} className="text-foreground" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => handleDelete(s)}>
-                        <Trash2 size={15} className="text-red-400" />
-                      </Button>
-                    </div>
+                    {!readOnly && (
+                      <div className="flex gap-1 justify-end">
+                        <Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => openEdit(s)}>
+                          <Edit size={18} className="text-foreground" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-11 w-11" onClick={() => handleDelete(s)}>
+                          <Trash2 size={15} className="text-red-400" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -208,7 +222,7 @@ export default function Suppliers() {
         onConfirm={confirmDelete}
       />
 
-      <DevlandCatalog open={catalogOpen} onClose={() => setCatalogOpen(false)} />
+      <DevlandCatalog open={catalogOpen} onClose={() => setCatalogOpen(false)} readOnly={!canAddStock} />
     </div>
   );
 }

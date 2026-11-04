@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import ViewOnlyNotice from "@/components/ViewOnlyNotice";
+import { useModuleAccess } from "@/lib/useModuleAccess";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 
@@ -21,6 +23,8 @@ export default function DebtorsControl() {
   const invalidateCustomer = useInvalidateEntity();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { canEdit } = useModuleAccess();
+  const readOnly = !canEdit("debtors");
 
   const allCustomers = customersQuery.data || [];
   const [search, setSearch] = useState("");
@@ -36,6 +40,7 @@ export default function DebtorsControl() {
   const maxDebtor = debtors.reduce((max, c) => Math.max(max, c.outstanding_balance || 0), 0);
 
   const recordPayment = async () => {
+    if (readOnly) return;
     const amount = parseFloat(paymentAmount) || 0;
     if (!paymentFor || amount <= 0) return;
     setSaving(true);
@@ -68,6 +73,8 @@ export default function DebtorsControl() {
           <p className="text-sm text-muted-foreground">Customers buying on credit and their outstanding balances</p>
         </div>
       </div>
+
+      {readOnly && <ViewOnlyNotice screen="Debtors Control" />}
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
@@ -144,13 +151,15 @@ export default function DebtorsControl() {
                     <div className="text-right flex-shrink-0">
                       <p className="text-xs text-muted-foreground">Owes</p>
                       <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatCurrency(c.outstanding_balance)}</p>
-                      <Button
-                        size="sm"
-                        className="mt-2 bg-green-600 hover:bg-green-700 h-9"
-                        onClick={() => { setPaymentFor(c); setPaymentAmount((c.outstanding_balance || 0).toFixed(2)); }}
-                      >
-                        <Wallet size={14} className="mr-1" /> Record Payment
-                      </Button>
+                      {!readOnly && (
+                        <Button
+                          size="sm"
+                          className="mt-2 bg-green-600 hover:bg-green-700 h-9"
+                          onClick={() => { setPaymentFor(c); setPaymentAmount((c.outstanding_balance || 0).toFixed(2)); }}
+                        >
+                          <Wallet size={14} className="mr-1" /> Record Payment
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>

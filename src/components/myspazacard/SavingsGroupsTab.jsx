@@ -14,7 +14,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 
 const fmt = (a) => "R " + Number(a || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export default function SavingsGroupsTab() {
+export default function SavingsGroupsTab({ readOnly = false }) {
   const groupsQuery = useEntityQuery("SavingsGroup", "list", []);
   const invalidate = useInvalidateEntity();
   const [groups, setGroups] = useState([]);
@@ -44,7 +44,9 @@ export default function SavingsGroupsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">Save together with other shop owners in a stokvel or shared savings group.</p>
-        <Button size="sm" onClick={() => { setEdit(null); setModal(true); }} className="bg-green-600 hover:bg-green-700"><Plus size={16} /> New Group</Button>
+        {!readOnly && (
+          <Button size="sm" onClick={() => { setEdit(null); setModal(true); }} className="bg-green-600 hover:bg-green-700"><Plus size={16} /> New Group</Button>
+        )}
       </div>
 
       {loading ? <div className="text-center py-8 text-gray-400">Loading...</div> : groups.length === 0 ? (
@@ -70,9 +72,9 @@ export default function SavingsGroupsTab() {
                   </div>
                   {g.invited ? (
                     <Badge variant="outline" className="text-[10px]">member</Badge>
-                  ) : (
+                  ) : readOnly ? null : (
                     <div className="flex items-center gap-1">
-                      <button onClick={() => { setEdit(g); setModal(true); }}><Pencil size={15} className="text-gray-400 hover:text-gray-600" /></button>
+                      <button onClick={() => { setEdit(g); setModal(true); }} aria-label={`Edit ${g.name}`}><Pencil size={15} className="text-gray-400 hover:text-gray-600" /></button>
                       <button onClick={() => setConfirmGroup(g)} aria-label={`Remove ${g.name}`}>
                         <Trash2 size={15} className="text-red-400 hover:text-red-600" />
                       </button>
