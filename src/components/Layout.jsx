@@ -11,6 +11,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useAuth } from "@/lib/AuthContext";
 import { usePortal } from "@/lib/PortalContext";
+import { CASHIER_PATHS } from "@/lib/portalAccess";
 import { queryClientInstance } from "@/lib/query-client";
 import OfflineBanner from "@/components/OfflineBanner";
 import ShopSwitcher from "@/components/shop/ShopSwitcher";
@@ -48,8 +49,11 @@ export default function Layout() {
   const { user, logout, shop, can } = useAuth();
   const { portal, lockPortal } = usePortal();
   const navigate = useNavigate();
-  // Owners see every screen; an employee only the modules granted to them.
+  // The cashier portal is the till only. Anyone else sees the owner screens or,
+  // for an employee account, the modules the owner granted them.
+  const cashierMode = portal?.method === "cashier";
   const visibleNavItems = navItems.filter((item) => {
+    if (cashierMode) return CASHIER_PATHS.includes(item.path);
     if (item.adminOnly && user?.role !== "admin") return false;
     if (item.ownerOnly && !shop?.isOwner) return false;
     if (item.module && !can(item.module)) return false;
@@ -251,7 +255,9 @@ export default function Layout() {
                     )}
                     {portal && (
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
-                        {portal.method === "cashier" ? "Cashier portal" : "Owner portal"}
+                        {portal.method === "cashier"
+                          ? `Cashier portal${portal.cashierName ? ` · ${portal.cashierName}` : ""}`
+                          : "Owner portal"}
                       </p>
                     )}
                   </div>
@@ -263,14 +269,16 @@ export default function Layout() {
                     <ArrowsLeftRight size={16} weight="duotone" />
                     Switch portal
                   </button>
-                  <Link
-                    to="/settings"
-                    onClick={() => setProfileOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <GearSix size={16} weight="duotone" />
-                    Settings
-                  </Link>
+                  {!cashierMode && (
+                    <Link
+                      to="/settings"
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <GearSix size={16} weight="duotone" />
+                      Settings
+                    </Link>
+                  )}
                   <button
                     type="button"
                     onClick={handleSignOut}

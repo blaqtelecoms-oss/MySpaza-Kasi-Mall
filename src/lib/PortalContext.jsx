@@ -5,28 +5,20 @@ import { queryClientInstance } from "@/lib/query-client";
 
 const PortalContext = createContext();
 
-// The owner's choice lives in this browser session, so signing in again (or
-// "Switch portal") asks again. A cashier's choice is also a row in the
-// database: every app table policy checks that session, not this value.
-const STORAGE_KEY = (userId) => `myspaza:portal:${userId}`;
-
-function readStored(userId) {
-  try {
-    const raw = window.sessionStorage.getItem(STORAGE_KEY(userId));
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeStored(userId, value) {
-  if (!userId) return;
-  try {
-    if (value) window.sessionStorage.setItem(STORAGE_KEY(userId), JSON.stringify(value));
-    else window.sessionStorage.removeItem(STORAGE_KEY(userId));
-  } catch {
-    /* private mode: the in-memory state still works */
-  }
+/**
+ * The portal a session has open. Both portals are password-gated in the
+ * database and recorded in `shop_portal_session`, so a reload (or a second tab)
+ * stays where the person was and the app's table policies can see the choice.
+ */
+function fromSession(session) {
+  if (!session?.method) return null;
+  return {
+    method: session.method,
+    shopId: session.shop_id,
+    cashierId: session.cashier_id || null,
+    cashierName: session.cashier_name || null,
+    expiresAt: session.expires_at || null,
+  };
 }
 
 export function PortalProvider({ children }) {
@@ -42,23 +34,13 @@ export function PortalProvider({ children }) {
     if (!userId) {
       setPortal(null);
       setResolvedKey(null);
-      return;
+      return undefined;
     }
-    if (!shop || !key) return;
+    if (!shop || !key) return undefined;
 
     let active = true;
 
-    async function resolve() {
-      if (shop.isOwner) {
-        const stored = readStored(userId);
-        if (!active) return;
-        setPortal(stored?.method === "owner" ? stored : null);
-        setResolvedKey(key);
-        return;
-      }
-
-      // An employee's open cashier session is recorded by the database, so a
-      // reload (or a second tab) keeps them inside the portal they unlocked.
+    (async () => {
       let session = null;
       try {
         session = await api.shop.portalSession();
@@ -66,61 +48,65 @@ export function PortalProvider({ children }) {
         session = null;
       }
       if (!active) return;
-      setPortal(
-        session?.method === "cashier" && session?.shop_id === shop.shopId
-          ? { method: "cashier", shopId: session.shop_id, expiresAt: session.expires_at }
-          : null
-      );
+      const next = fromSession(session);
+      setPortal(next && next.shopId === shop.shopId ? next : null);
       setResolvedKey(key);
-    }
+    })();
 
-    resolve();
     return () => {
       active = false;
     };
-  }, [userId, shop?.isOwner, shop?.shopId, key]);
+  }, [userId, shop?.shopId, key]);
 
-  /** Owner portal: the account itself is the credential (verified in SQL too). */
-  const openOwnerPortal = useCallback(
-    async (shopId) => {
-      const data = await api.shop.openOwnerPortal(shopId);
-      const next = { method: "owner", shopId, expiresAt: data?.expires_at || null };
-      writeStored(user?.id, next);
-      setPortal(next);
-      await queryClientInstance.invalidateQueries();
-      return data;
-    },
-    [user?.id]
-  );
-
-  /** Cashier portal: the database checks this cashier's own password. */
-  const openCashierPortal = useCallback(async (shopId, password) => {
-    const data = await api.shop.openCashierPortal(shopId, password);
+  /** Owner portal: opens only with the store's own portal password. */
+  const openOwnerPortal = useCallback(async (shopId, password) => {
+    const data = await api.shop.openOwnerPortal(shopId, password);
     if (data?.ok) {
-      setPortal({ method: "cashier", shopId, expiresAt: data.expires_at });
+      setPortal({
+        method: "owner",
+        shopId,
+        cashierId: null,
+        cashierName: null,
+        expiresAt: data.expires_at || null,
+      });
+      await queryClientInstance.invalidateQueries();
+    }
+    return data;
+  }, []);
+
+  /** Cashier portal: opens only with the chosen cashier's own password. */
+  const openCashierPortal = useCallback(async (shopId, cashierId, password) => {
+    const data = await api.shop.openCashierPortal(shopId, cashierId, password);
+    if (data?.ok) {
+      setPortal({
+        method: "cashier",
+        shopId,
+        cashierId: data.cashier_id || cashierId,
+        cashierName: data.cashier_name || null,
+        expiresAt: data.expires_at || null,
+      });
       // The session is what lets the shop's tables through, so refetch them.
       await queryClientInstance.invalidateQueries();
     }
     return data;
   }, []);
 
-  /** Leave the portal (and end the cashier session on this account). */
+  /** Leave the portal (and end its session in the database). */
   const lockPortal = useCallback(async () => {
     try {
       await api.shop.closePortal();
     } catch {
       /* offline or signing out anyway: the client state still closes */
     }
-    writeStored(user?.id, null);
     setPortal(null);
-  }, [user?.id]);
+  }, []);
 
   return (
     <PortalContext.Provider value={{ portal, loading, openOwnerPortal, openCashierPortal, lockPortal }}>
       {children}
     </PortalContext.Provider>
   );
-}
+};
 
 export const usePortal = () => {
   const context = useContext(PortalContext);

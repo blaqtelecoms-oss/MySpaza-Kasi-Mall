@@ -334,37 +334,51 @@ helpers; the screen is `/admin/product-copy` ("Catalogue Copy" in the sidebar,
 
 ## Store portals (owner / cashier)
 
-`supabase/migrations/20261106_shop_portals.sql` adds the portal gate; the screen
-is `/portal` (`src/pages/PortalSelect.jsx`) and it opens right after sign-in.
+`supabase/migrations/20261107_shop_portal_passwords.sql` adds the portal
+passwords; the screen is `/portal` (`src/pages/PortalSelect.jsx`) and it opens
+right after sign-in. (`20261106_shop_portals.sql` is the earlier, invitation-based
+version of the same gate.)
 
 - **The choice comes before the app.** `PortalGate` wraps the app shell in
-  `App.jsx`, so a signed-in account with no portal open is sent to `/portal`
-  before any screen renders. Onboarding still comes first for a new owner.
-- **Owner portal** is the owner's own account: `unlock_owner_portal(shop)` is
-  security definer and checks `is_shop_owner`, so an employee calling the RPC
-  directly gets `42501`.
-- **Cashier portal** asks for the password the owner sets per employee
-  (Employees → Edit access, `set_cashier_password` / `clear_cashier_password`).
-  Hashes live in `shop_cashier_access`, RLS on with **no policies**, so no client
-  can read a hash — only the definer functions touch it. Five wrong attempts lock
-  that cashier out for five minutes.
-- **The password gates the data, not only the screen:** `shop_module_level()`
-  calls `shop_portal_open(m.id, shop)`, and every app-table policy reads it. A
-  membership with no password stays open (the pre-portals behaviour), so applying
-  the migration locks nobody out. Opening the portal writes a
-  `shop_portal_session` (12 h); `close_portal()`, a password change and removing
-  the employee end it.
-- `shop_cashier_access.member_id` and the session rows key on the **`shop_member`
-  row id**, never the auth uid (`m.id`, not `m.member_id` in
-  `shop_module_level`). Mixing the two makes the gate silently never open.
-- `PortalContext` keeps the owner's choice in `sessionStorage`
-  (`myspaza:portal:<user id>`) and restores a cashier's from the database, so a
-  reload stays inside the portal. Sign out and "Switch portal" close it.
-- `/employees` needs the `employees` feature (Premium+), so verify the owner
-  side on a Premium/Ultra test shop. Verify the gate without a browser by
-  signing in through `/auth/v1/token?grant_type=password` as a test cashier:
-  the shop's tables return nothing until `unlock_cashier_portal` succeeds and
-  again after `close_portal`.
+  `App.jsx`, so a signed-in account with no open portal session is sent to
+  `/portal` before any screen renders. Onboarding still comes first for a new
+  owner.
+- **Both portals have a password of their own, separate from sign-in.** The
+  owner portal checks `shop_owner_portal` (`set_owner_portal_password`,
+  `open_owner_portal`); until the owner creates one on `/portal` the portal
+  cannot open at all. A cashier portal checks `shop_cashier_secret` for the
+  chosen till (`set_shop_cashier_password`, `open_cashier_portal_slot`). Both
+  hashes live in tables with RLS on and **no policies**, so no browser can read
+  one; five wrong attempts lock that portal for five minutes, and changing a
+  password closes any portal already open on it.
+- **Three cashiers per store, seeded by the store itself.** A `shop` insert
+  trigger calls `shop_seed_cashiers()`; the migration backfills the stores that
+  already existed and `my_portal_options()` calls it for a primary shop that has
+  no `shop` row yet. It inserts only the missing slots (`slot` 1–3, unique per
+  shop), so re-running it never duplicates a cashier. The owner renames each one
+  and sets its password on `/employees` (`rename_shop_cashier`,
+  `set_shop_cashier_password`, `clear_shop_cashier_password`).
+- **The password gates the data, not only the screen:** opening a portal writes a
+  `shop_portal_session` (12 h), and `shop_module_level()` only counts a
+  membership whose `shop_portal_open()` says yes. Session rows key on the
+  **`shop_member` row id** for an employee and on the auth uid for the store's own
+  account (`m.id`, not `m.member_id`); mixing the two makes the gate silently
+  never open.
+- `PortalContext` restores whichever session the database reports, so a reload
+  stays inside the portal. Sign out and "Switch portal" call `close_portal()`.
+- **A cashier portal is the till.** `src/lib/portalAccess.js` lists the routes a
+  cashier session may open (`/pos`, `/inventory`, `/daily-sales`); `PortalGate`
+  redirects everything else to `/pos` and the sidebar hides the rest. That limit
+  lives in the shell: for a cashier session on the store's *own* account the table
+  policies still see the owner, so never treat the list as a security boundary.
+- **Inviting staff by email is gone** (`InviteEmployeeDialog` was removed) — the
+  three cashiers are the team. `accept_shop_invite()` and the `/invite/<token>`
+  route stay so old links still resolve, and any surviving `shop_member` rows are
+  listed on `/employees` as "Staff logins". The old member-keyed
+  `shop_cashier_access` passwords were cleared, so no employee is left locked out
+  by a password nobody can now set.
+- `/employees` needs the `employees` feature (Premium+), so a Free shop cannot
+  set cashier passwords; verify that screen on a Premium/Ultra test shop.
 
 ## Sandbox runtime (`docker-compose.base44.yml`)
 
