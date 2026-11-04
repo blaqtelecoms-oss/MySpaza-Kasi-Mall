@@ -34,6 +34,7 @@ const Suppliers = lazy(() => import('@/pages/Suppliers'));
 const Customers = lazy(() => import('@/pages/Customers'));
 const DebtorsControl = lazy(() => import('@/pages/DebtorsControl'));
 const Employees = lazy(() => import('@/pages/Employees'));
+const AuditLog = lazy(() => import('@/pages/AuditLog'));
 const Reports = lazy(() => import('@/pages/Reports'));
 const Academy = lazy(() => import('@/pages/Academy'));
 const Calculators = lazy(() => import('@/pages/Calculators'));
@@ -125,6 +126,8 @@ const AuthenticatedApp = () => {
                 this screen is owner-only but not plan-gated; the page itself
                 hides the Premium "Staff logins" section below the plan. */}
             <Route path="/employees" element={<RequireOwner><Employees /></RequireOwner>} />
+            {/* Who did what: sign-ins, portal opens, page visits and record changes. */}
+            <Route path="/audit-log" element={<RequireOwner><AuditLog /></RequireOwner>} />
             <Route path="/reports" element={<RequireModule module="reports"><RequirePlan feature="reports"><Reports /></RequirePlan></RequireModule>} />
             <Route path="/academy" element={<RequireModule module="academy"><Academy /></RequireModule>} />
             <Route path="/calculators" element={<RequireModule module="calculators"><Calculators /></RequireModule>} />

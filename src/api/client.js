@@ -11,6 +11,7 @@ import { planStatus, resolvePlan, shopLimit } from "@/lib/plans";
 
 /** Entity name → Postgres table. */
 const TABLES = {
+  AuditLog: "audit_log",
   BankAccount: "bank_account",
   BulkBuy: "bulk_buy",
   CashUp: "cash_up",
@@ -143,7 +144,7 @@ async function currentUserId() {
 // read is always narrowed to the branch the account is working in — the owner
 // may run several, and the database then lets them see all of them.
 const SHOP_SCOPED = new Set([
-  "bank_account", "bulk_buy", "cash_up", "customer", "expense", "product",
+  "audit_log", "bank_account", "bulk_buy", "cash_up", "customer", "expense", "product",
   "purchase_order", "sale", "savings_group", "shop_settings", "stock_adjustment",
   "stockfell_account", "supplier", "wholesaler", "wholesaler_discount",
 ]);
@@ -962,6 +963,31 @@ const shop = {
  * checkout (the secret key stays on the server) and reads the payment row while
  * Yoco's signed webhook settles it. A plan is never activated from here.
  */
+/**
+ * The store's audit log. The database stamps who did it (signed-in account,
+ * shop role and open portal), so the browser only says what happened.
+ */
+const audit = {
+  /**
+   * Record one event. A signed-out call or a duplicate is ignored by the
+   * database rather than failing the screen that reported it.
+   */
+  async log({ shopId, category, action, module = null, path = null, summary = null, details = {} }) {
+    if (!shopId || !action) return null;
+    const { data, error } = await supabase.rpc("log_audit_event", {
+      p_shop: shopId,
+      p_category: category || "page",
+      p_action: action,
+      p_module: module,
+      p_path: path,
+      p_summary: summary,
+      p_details: details || {},
+    });
+    if (error) throw new Error(error.message);
+    return data ?? null;
+  },
+};
+
 const billing = {
   /** Owner: open Yoco's hosted payment page for Premium or Ultra. */
   async startCheckout(planKey) {
@@ -1096,7 +1122,7 @@ const admin = {
   },
 };
 
-export const api = { entities, auth, integrations, shop, groups, billing, admin };
+export const api = { entities, auth, integrations, shop, groups, billing, admin, audit };
 
 // Transparent offline caching + write queueing over the entity layer.
 installOfflineLayer(api);

@@ -367,13 +367,18 @@ version of the same gate.)
   (`null` = no cap — never resolve it with `??`). `STAFF_LIMITS` in
   `src/lib/plans.js` mirrors `public.shop_staff_limit()`; `add_shop_cashier()`
   and `set_shop_cashier_role()` enforce it and raise the message the owner sees.
+  `staffLimit()` reads the role by key rather than with `??`, because Ultra's
+  unlimited `null` would otherwise fall back to Free's "1 cashier".
+  `nextPlanKey()` decides the upgrade target ("Ultra covers 1" was this bug).
   `shop_seed_cashiers()` now creates one cashier (plus a supervisor when the plan
   allows) and only missing slots, and the migration trimmed *unused* default
   cashier slots a store's plan does not cover — a portal with a password or an
   owner-chosen name is never removed.
-- `/employees` is owner-only but **not** plan-gated any more, because every plan
-  rings up sales on a till portal; the page hides the Premium "Staff logins"
-  section itself (`canUse("employees")`).
+- `/employees` is owner-only but **not** plan-gated: `employees` is a Free
+  feature (`FEATURES` in `src/lib/plans.js`), so every owner manages their staff
+  on every plan and the plan only caps how many cashiers and supervisors a store
+  may run. A cashier or supervisor portal does not see the screen — open the
+  owner portal to manage staff.
 - **The password gates the data, not only the screen:** opening a portal writes a
   `shop_portal_session` (12 h), and `shop_module_level()` only counts a
   membership whose `shop_portal_open()` says yes. Session rows key on the
@@ -398,7 +403,33 @@ version of the same gate.)
   `shop_cashier_access` passwords were cleared, so no employee is left locked out
   by a password nobody can now set.
 - `/employees` is owner-only and open on every plan (see the staff allowance
-  above); the Premium "Staff logins" section inside it needs `employees`.
+  above); everyone in the shop can see who works there.
+
+## Audit log
+
+`supabase/migrations/20261109_audit_log.sql` adds the log; the screen is
+`/audit-log` ("Audit Log" in the sidebar, owner only).
+
+- One row per event in `public.audit_log`, scoped like every app table by
+  `created_by_id` (the shop). `actor_id`, `actor_name`, `actor_role` and
+  `portal` are stamped by `public.audit_actor()` from the session — never from
+  the browser's payload, so a screen cannot claim someone else acted.
+- **Data changes come from a trigger, not the screens.** `audit_row_change()`
+  is attached to the shop's tables (products, sales, expenses, staff portals,
+  settings, subscription payments, …) and runs as a definer, so a write cannot
+  skip its entry. It returns silently when `auth.uid()` is null (migrations,
+  service role) and wraps its insert in an exception block so logging can never
+  break the change it records.
+- **Sign-ins, sign-outs, portal opens/closes and page views** call
+  `log_audit_event()` (RPC `api.audit.log`): `AuthContext` for the first two,
+  `PortalContext` for the portal, `src/components/AuditTrail.jsx` for every
+  route change. The function refuses a shop the caller does not work in and
+  collapses a repeat of the same action within 3 seconds into one row.
+- **Owner-only reads.** The table grants `select` only, with a policy on
+  `is_shop_owner(created_by_id)`; there is no insert/update/delete grant at all,
+  so not even the owner can rewrite the log.
+- New shop table → add it to the trigger array at the bottom of the migration,
+  and to `TABLES`/`SHOP_SCOPED` in `src/api/client.js` if a screen reads it.
 
 ## Sandbox runtime (`docker-compose.base44.yml`)
 

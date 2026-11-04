@@ -5,9 +5,10 @@ import {
   SquaresFour, ShoppingCart, Package, TrendUp, CurrencyDollar, UsersThree, Truck,
   ChartBar, GearSix, List, X, Bank, GraduationCap, Robot, CreditCard,
   Money, UserCheck, Calculator, ArrowsClockwise, Wallet, TrendDown, Receipt,
-  EnvelopeSimple, SignOut, StackPlus, ArrowsLeftRight,
+  EnvelopeSimple, SignOut, StackPlus, ArrowsLeftRight, ClipboardText,
 } from "@phosphor-icons/react";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import AuditTrail from "@/components/AuditTrail";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useAuth } from "@/lib/AuthContext";
 import { usePortal } from "@/lib/PortalContext";
@@ -32,6 +33,7 @@ const navItems = [
   { icon: UsersThree, label: "Customers", path: "/customers", module: "customers" },
   { icon: TrendDown, label: "Debtors Control", path: "/debtors", module: "debtors" },
   { icon: UserCheck, label: "Employees", path: "/employees", ownerOnly: true },
+  { icon: ClipboardText, label: "Audit Log", path: "/audit-log", ownerOnly: true },
   { icon: ChartBar, label: "Reports", path: "/reports", module: "reports" },
   { icon: GraduationCap, label: "Academy", path: "/academy", module: "academy" },
   { icon: Calculator, label: "Calculators", path: "/calculators", module: "calculators" },
@@ -120,6 +122,8 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
+      {/* Records each screen opened in the shop's audit log. */}
+      <AuditTrail />
       {/* Sidebar Overlay */}
       {sidebarOpen && (
         <div

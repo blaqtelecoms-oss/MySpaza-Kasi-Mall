@@ -73,6 +73,9 @@ export function PortalProvider({ children }) {
         permissions: null,
         expiresAt: data.expires_at || null,
       });
+      api.audit
+        .log({ shopId, category: "portal", action: "portal_open", summary: "Opened the owner portal" })
+        .catch(() => {});
       await queryClientInstance.invalidateQueries();
     }
     return data;
@@ -92,6 +95,15 @@ export function PortalProvider({ children }) {
         expiresAt: data.expires_at || null,
       });
       // The session is what lets the shop's tables through, so refetch them.
+      const role = data.cashier_role || "cashier";
+      api.audit
+        .log({
+          shopId,
+          category: "portal",
+          action: "portal_open",
+          summary: `Opened the ${role} portal${data.cashier_name ? ` · ${data.cashier_name}` : ""}`,
+        })
+        .catch(() => {});
       await queryClientInstance.invalidateQueries();
     }
     return data;
@@ -99,13 +111,25 @@ export function PortalProvider({ children }) {
 
   /** Leave the portal (and end its session in the database). */
   const lockPortal = useCallback(async () => {
+    // Logged before the session closes, so the entry names the portal and role
+    // that were actually open.
+    if (shop?.shopId) {
+      api.audit
+        .log({
+          shopId: shop.shopId,
+          category: "portal",
+          action: "portal_close",
+          summary: portal?.method === "cashier" ? `Closed the ${portal.role || "cashier"} portal` : "Closed the owner portal",
+        })
+        .catch(() => {});
+    }
     try {
       await api.shop.closePortal();
     } catch {
       /* offline or signing out anyway: the client state still closes */
     }
     setPortal(null);
-  }, []);
+  }, [shop?.shopId, portal]);
 
   return (
     <PortalContext.Provider value={{ portal, loading, openOwnerPortal, openCashierPortal, lockPortal }}>

@@ -8,7 +8,7 @@ import { Loader2, Plus, ShieldCheck, ShoppingBasket, UserCheck, Users } from "lu
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { PLAN_BY_KEY, staffLimit } from "@/lib/plans";
+import { PLAN_BY_KEY, nextPlanKey, staffLimit } from "@/lib/plans";
 import { roleLabel } from "@/lib/portalAccess";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import EditEmployeeDialog from "@/components/employees/EditEmployeeDialog";
@@ -64,8 +64,14 @@ export default function Employees() {
   const supervisors = staff.filter((portal) => portal.role === "supervisor");
   const readyCount = staff.filter((portal) => portal.has_password).length;
 
-  const limitFor = (role) => options?.staff_limits?.[role] ?? staffLimit(plan, role);
-  const nextPlan = plan === "free" ? "premium" : "ultra";
+  // `staff_limits` says `null` for Ultra's unlimited allowance, so it is read by
+  // key rather than with `??` (which would treat unlimited as "not set").
+  const limitFor = (role) => {
+    const limits = options?.staff_limits;
+    if (limits && role in limits) return limits[role];
+    return staffLimit(plan, role);
+  };
+  const nextPlan = nextPlanKey(plan);
 
   const refresh = () => {
     invalidate("ShopMember");
@@ -147,14 +153,18 @@ export default function Employees() {
             {limit === 0
               ? `Your ${PLAN_BY_KEY[plan]?.name} plan doesn't include a supervisor portal.`
               : `${PLAN_BY_KEY[plan]?.name} covers ${limit} ${role}${limit === 1 ? "" : "s"}.`}
-            <Button
-              size="sm"
-              variant="link"
-              className="h-auto p-0 text-xs"
-              onClick={() => openCheckout(nextPlan)}
-            >
-              Upgrade to {PLAN_BY_KEY[nextPlan]?.name} for more
-            </Button>
+            {nextPlan ? (
+              <Button
+                size="sm"
+                variant="link"
+                className="h-auto p-0 text-xs"
+                onClick={() => openCheckout(nextPlan)}
+              >
+                Upgrade to {PLAN_BY_KEY[nextPlan]?.name} for more
+              </Button>
+            ) : (
+              <span>Remove one to make room.</span>
+            )}
           </p>
         )}
       </section>

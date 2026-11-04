@@ -19,7 +19,9 @@ export const FEATURES = [
   { key: "funding", label: "Funding Hub", plan: "free" },
   { key: "myspaza_card", label: "MySpaza Card", plan: "free" },
   { key: "ads", label: "Ads", plan: "free" },
-  { key: "employees", label: "Employees", plan: "premium" },
+  // Staff management is on every plan: the plan decides how many cashiers and
+  // supervisors a store may run (see STAFF_LIMITS), not whether it has staff.
+  { key: "employees", label: "Employees", plan: "free" },
   { key: "reports", label: "Reports", plan: "premium" },
   { key: "coach", label: "Spaza Coach (AI Assistant)", plan: "premium" },
   { key: "customers", label: "Customers", plan: "premium" },
@@ -81,8 +83,8 @@ export const PLANS = [
       "2 shops or branches",
       "2 cashier portals + 1 supervisor",
       "No ads",
-      "Everything in Free, plus Employees",
-      "Reports, Customers & Spaza Coach AI",
+      "Everything in Free, plus Reports",
+      "Customers & Spaza Coach AI",
     ],
   },
   {
@@ -148,7 +150,14 @@ export function shopCountLabel(planKey) {
 /** How many cashier or supervisor portals this plan may run; `null` = unlimited. */
 export function staffLimit(planKey, role) {
   const limits = planKey in STAFF_LIMITS ? STAFF_LIMITS[planKey] : STAFF_LIMITS.free;
-  return limits[role] ?? STAFF_LIMITS.free[role];
+  // Ultra is an explicit `null`, so `??` would wrongly fall back to Free here.
+  if (role in limits) return limits[role];
+  return STAFF_LIMITS.free[role];
+}
+
+/** The next plan up, or `null` when this is already the top tier. */
+export function nextPlanKey(planKey) {
+  return PLAN_KEYS[planRank(planKey) + 1] || null;
 }
 
 /** "1 cashier portal", "2 supervisor portals", "Unlimited cashier portals". */
