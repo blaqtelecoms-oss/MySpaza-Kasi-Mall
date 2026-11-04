@@ -17,6 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useToast } from "@/components/ui/use-toast";
 import CartContents from "@/components/pos/CartContents";
+import ViewOnlyNotice from "@/components/ViewOnlyNotice";
+import { useModuleAccess } from "@/lib/useModuleAccess";
 import { toShopSettings } from "@/lib/shopSettings";
 import { printReceipt } from "@/lib/receipt";
 
@@ -55,6 +57,8 @@ export default function POS() {
   const [savedOffline, setSavedOffline] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const { toast } = useToast();
+  const { canEdit } = useModuleAccess();
+  const readOnly = !canEdit("pos");
 
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId) || null;
   const isCredit = selectedPayment === "credit";
@@ -69,6 +73,7 @@ export default function POS() {
   });
 
   const addToCart = (product) => {
+    if (readOnly) return;
     setCart(prev => {
       const existing = prev.find(i => i.product_id === product.id);
       if (existing) {
@@ -114,7 +119,7 @@ export default function POS() {
   const creditExceeded = hasCreditLimit && total > availableCredit;
 
   const completeSale = async () => {
-    if (cart.length === 0) return;
+    if (readOnly || cart.length === 0) return;
     const saleCart = cart;
     const saleNumber = `S${Date.now().toString().slice(-6)}`;
     let selectedCustomerRef = selectedCustomer;
@@ -286,6 +291,12 @@ export default function POS() {
           </div>
         </div>
 
+        {readOnly && (
+          <div className="px-3 pt-3">
+            <ViewOnlyNotice screen="Point of Sale" />
+          </div>
+        )}
+
         {/* Product Grid */}
         <div className="flex-1 overflow-y-auto p-3">
           {filtered.length === 0 ? (
@@ -323,6 +334,7 @@ export default function POS() {
       </div>
 
       {/* Cart Panel (desktop) */}
+      {!readOnly && (
       <div className="hidden lg:flex w-80 xl:w-96 bg-white border-l flex-col shadow-xl flex-shrink-0">
         <div className="p-4 border-b">
           <div className="flex items-center justify-between">
@@ -350,8 +362,10 @@ export default function POS() {
           onClearCustomer={() => setSelectedCustomerId(null)}
         />
       </div>
+      )}
 
       {/* Mobile cart FAB */}
+      {!readOnly && (
       <button
         onClick={() => setCartOpen(true)}
         className="lg:hidden fixed bottom-20 right-4 z-30 bg-green-600 text-white rounded-full h-16 w-16 shadow-xl flex items-center justify-center active:scale-95 transition-transform"
@@ -364,8 +378,10 @@ export default function POS() {
           </span>
         )}
       </button>
+      )}
 
       {/* Mobile cart drawer */}
+      {!readOnly && (
       <Drawer open={cartOpen} onOpenChange={setCartOpen}>
         <DrawerContent className="h-[85vh] max-h-[85vh]">
           <DrawerHeader className="text-left pb-2">
@@ -393,6 +409,7 @@ export default function POS() {
           </div>
         </DrawerContent>
       </Drawer>
+      )}
 
       {/* Payment Modal */}
       <Dialog open={paymentModal} onOpenChange={setPaymentModal}>

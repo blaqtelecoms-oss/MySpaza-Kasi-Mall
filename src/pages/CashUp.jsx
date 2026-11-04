@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import ViewOnlyNotice from "@/components/ViewOnlyNotice";
+import { useModuleAccess } from "@/lib/useModuleAccess";
 import { useToast } from "@/components/ui/use-toast";
 
 const formatCurrency = (n) => `R ${(n || 0).toFixed(2)}`;
@@ -32,6 +34,8 @@ export default function CashUp() {
   });
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const { canEdit } = useModuleAccess();
+  const viewOnly = !canEdit("cashup");
 
   // The sales breakdown always mirrors today's completed sales on the system,
   // so new sales show up immediately (not just the ones that existed on first
@@ -103,6 +107,7 @@ export default function CashUp() {
   const cashDifference = v("actual_cash") - expectedCash;
 
   const handleSubmit = async () => {
+    if (viewOnly) return;
     setSaving(true);
     try {
       const data = {
@@ -147,7 +152,7 @@ export default function CashUp() {
           className="pl-7"
           value={form[field]}
           onChange={e => handleChange(field, e.target.value)}
-          readOnly={readOnly}
+          readOnly={readOnly || viewOnly}
           step="0.01"
           placeholder="0.00"
         />
@@ -168,6 +173,8 @@ export default function CashUp() {
         </div>
         {todayCashup && <Badge className="shrink-0 bg-green-100 px-3 py-1 text-green-700 dark:bg-green-900/40 dark:text-green-300"><CheckCircle size={12} weight="fill" className="mr-1" />Completed</Badge>}
       </div>
+
+      {viewOnly && <ViewOnlyNotice screen="Cash Up" />}
 
       {/* Summary Row */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
@@ -251,18 +258,20 @@ export default function CashUp() {
 
             <div>
               <Label className="text-sm text-muted-foreground">Cashier Name</Label>
-              <Input className="mt-1" value={form.cashier_name} onChange={e => handleChange("cashier_name", e.target.value)} />
+              <Input className="mt-1" value={form.cashier_name} onChange={e => handleChange("cashier_name", e.target.value)} readOnly={viewOnly} />
             </div>
 
             <div>
               <Label className="text-sm text-muted-foreground">Notes</Label>
-              <Input className="mt-1" placeholder="Any notes..." value={form.notes} onChange={e => handleChange("notes", e.target.value)} />
+              <Input className="mt-1" placeholder="Any notes..." value={form.notes} onChange={e => handleChange("notes", e.target.value)} readOnly={viewOnly} />
             </div>
 
-            <Button onClick={handleSubmit} disabled={saving} className="w-full bg-green-600 hover:bg-green-700 h-12 font-bold">
-              <CheckCircle size={18} weight="bold" className="mr-2" />
-              {saving ? "Saving..." : todayCashup ? "Update Cash Up" : "Submit Cash Up"}
-            </Button>
+            {!viewOnly && (
+              <Button onClick={handleSubmit} disabled={saving} className="w-full bg-green-600 hover:bg-green-700 h-12 font-bold">
+                <CheckCircle size={18} weight="bold" className="mr-2" />
+                {saving ? "Saving..." : todayCashup ? "Update Cash Up" : "Submit Cash Up"}
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

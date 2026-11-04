@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MobileSelect } from "@/components/ui/mobile-select";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import ViewOnlyNotice from "@/components/ViewOnlyNotice";
+import { useModuleAccess } from "@/lib/useModuleAccess";
 import { useToast } from "@/components/ui/use-toast";
 
 const formatCurrency = (n) => `R ${(n || 0).toFixed(2)}`;
@@ -46,10 +48,13 @@ export default function Expenses() {
   const [filterMonth, setFilterMonth] = useState(today.slice(0, 7));
   const [deleteTarget, setDeleteTarget] = useState(null);
   const { toast } = useToast();
+  const { canEdit } = useModuleAccess();
+  const readOnly = !canEdit("expenses");
 
   const expenses = allExpenses.filter(e => e.expense_date && e.expense_date.startsWith(filterMonth));
 
   const handleSave = async () => {
+    if (readOnly) return;
     if (!form.category || !form.amount || !form.expense_date) {
       toast({ title: "Required Fields", description: "Category, amount and date are required", variant: "destructive" });
       return;
@@ -70,7 +75,7 @@ export default function Expenses() {
   const handleDelete = (e) => setDeleteTarget(e);
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (readOnly || !deleteTarget) return;
     await api.entities.Expense.delete(deleteTarget.id);
     setDeleteTarget(null);
     invalidateExpense("Expense");
@@ -93,10 +98,14 @@ export default function Expenses() {
           </div>
           <p className="text-sm text-muted-foreground">Track all business expenses</p>
         </div>
-        <Button onClick={() => setModalOpen(true)} className="gap-2 bg-green-600 hover:bg-green-700">
-          <Plus size={16} /> Add Expense
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setModalOpen(true)} className="gap-2 bg-green-600 hover:bg-green-700">
+            <Plus size={16} /> Add Expense
+          </Button>
+        )}
       </div>
+
+      {readOnly && <ViewOnlyNotice screen="Expenses" />}
 
       {/* Month filter + total */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -131,23 +140,25 @@ export default function Expenses() {
       )}
 
       {/* Quick Expense Buttons */}
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base">Quick Add</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-            {EXPENSE_CATEGORIES.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => { setForm({...emptyForm, category: cat.id}); setModalOpen(true); }}
-                className="flex flex-col items-center gap-1 p-3 bg-muted hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors"
-              >
-                {cat.icon}
-                <span className="text-xs text-muted-foreground text-center leading-tight">{cat.label}</span>
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {!readOnly && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Quick Add</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+              {EXPENSE_CATEGORIES.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => { setForm({...emptyForm, category: cat.id}); setModalOpen(true); }}
+                  className="flex flex-col items-center gap-1 p-3 bg-muted hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors"
+                >
+                  {cat.icon}
+                  <span className="text-xs text-muted-foreground text-center leading-tight">{cat.label}</span>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Expense List */}
       {loading ? (
@@ -176,9 +187,11 @@ export default function Expenses() {
                     </div>
                     <div className="flex shrink-0 items-center gap-1 sm:gap-3">
                       <p className="font-bold text-red-600">{formatCurrency(e.amount)}</p>
-                      <button onClick={() => handleDelete(e)} className="p-2">
-                        <Trash2 size={18} className="text-muted-foreground hover:text-red-500" />
-                      </button>
+                      {!readOnly && (
+                        <button onClick={() => handleDelete(e)} className="p-2" aria-label="Delete expense">
+                          <Trash2 size={18} className="text-muted-foreground hover:text-red-500" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

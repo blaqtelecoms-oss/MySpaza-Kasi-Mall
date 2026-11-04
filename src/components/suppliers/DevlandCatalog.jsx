@@ -202,7 +202,7 @@ const CATALOG = [
 const CATEGORIES = [...new Set(CATALOG.map(i => i.category))];
 
 // Step 1: Browse & select | Step 2: Set selling price & stock per item
-export default function DevlandCatalog({ open, onClose }) {
+export default function DevlandCatalog({ open, onClose, readOnly = false }) {
   const [step, setStep] = useState(1); // 1 = browse, 2 = set details
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("All");
@@ -218,6 +218,7 @@ export default function DevlandCatalog({ open, onClose }) {
   });
 
   const toggleSelect = (idx) => {
+    if (readOnly) return;
     setSelected(prev => ({ ...prev, [idx]: !prev[idx] }));
     if (!itemDetails[idx]) {
       setItemDetails(prev => ({ ...prev, [idx]: { selling_price: "", stock_quantity: "" } }));
@@ -350,16 +351,23 @@ export default function DevlandCatalog({ open, onClose }) {
             </div>
 
             <div className="p-4 border-t bg-gray-50 flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={handleClose}>Cancel</Button>
-              <Button
-                className="flex-1 bg-green-600 hover:bg-green-700 gap-2"
-                onClick={handleProceed}
-                disabled={selectedCount === 0}
-              >
-                <ChevronRight size={16} />
-                Next: Set Prices ({selectedCount} item{selectedCount !== 1 ? "s" : ""})
-              </Button>
+              <Button variant="outline" className="flex-1" onClick={handleClose}>Close</Button>
+              {!readOnly && (
+                <Button
+                  className="flex-1 bg-green-600 hover:bg-green-700 gap-2"
+                  onClick={handleProceed}
+                  disabled={selectedCount === 0}
+                >
+                  <ChevronRight size={16} />
+                  Next: Set Prices ({selectedCount} item{selectedCount !== 1 ? "s" : ""})
+                </Button>
+              )}
             </div>
+            {readOnly && (
+              <p className="px-4 pb-3 text-xs text-gray-500">
+                You have view-only access to Inventory, so items can be browsed but not added.
+              </p>
+            )}
           </>
         ) : (
           <>

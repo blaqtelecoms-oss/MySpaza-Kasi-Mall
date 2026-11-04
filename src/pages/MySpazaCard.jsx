@@ -6,6 +6,8 @@ import DiscountsTab from "@/components/myspazacard/DiscountsTab";
 import StokvelTab from "@/components/myspazacard/StokvelTab";
 import SavingsGroupsTab from "@/components/myspazacard/SavingsGroupsTab";
 import BulkBuyTab from "@/components/myspazacard/BulkBuyTab";
+import ViewOnlyNotice from "@/components/ViewOnlyNotice";
+import { useModuleAccess } from "@/lib/useModuleAccess";
 
 const fmt = (a) => "R " + Number(a || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -18,6 +20,8 @@ const TABS = [
 
 export default function MySpazaCard() {
   const [tab, setTab] = useState("discounts");
+  const { canEdit } = useModuleAccess();
+  const readOnly = !canEdit("myspaza_card");
   const stockfellQuery = useEntityQuery("StockfellAccount", "list", []);
   const discountsQuery = useEntityQuery("WholesalerDiscount", "list", []);
   const groupsQuery = useEntityQuery("SavingsGroup", "list", []);
@@ -40,6 +44,8 @@ export default function MySpazaCard() {
           <p className="text-xs text-muted-foreground">Discounts · Savings · Bulk Buying</p>
         </div>
       </div>
+
+      {readOnly && <ViewOnlyNotice screen="MySpaza Card" />}
 
       {/* Card + Quick Stats */}
       <div className="grid sm:grid-cols-2 gap-4 items-center">
@@ -72,10 +78,10 @@ export default function MySpazaCard() {
 
       {/* Tab Content */}
       <div>
-        {tab === "discounts" && <DiscountsTab />}
-        {tab === "stokvel" && <StokvelTab />}
-        {tab === "groups" && <SavingsGroupsTab />}
-        {tab === "bulk" && <BulkBuyTab />}
+        {tab === "discounts" && <DiscountsTab readOnly={readOnly} />}
+        {tab === "stokvel" && <StokvelTab readOnly={readOnly} />}
+        {tab === "groups" && <SavingsGroupsTab readOnly={readOnly} />}
+        {tab === "bulk" && <BulkBuyTab readOnly={readOnly} />}
       </div>
     </div>
   );

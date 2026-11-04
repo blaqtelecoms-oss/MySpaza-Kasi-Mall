@@ -16,6 +16,8 @@ import { useToast } from "@/components/ui/use-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import AdBanner from "@/components/AdBanner";
 import ProductImageUpload from "@/components/inventory/ProductImageUpload";
+import ViewOnlyNotice from "@/components/ViewOnlyNotice";
+import { useModuleAccess } from "@/lib/useModuleAccess";
 
 const formatCurrency = (n) => `R ${(n || 0).toFixed(2)}`;
 
@@ -42,20 +44,25 @@ export default function Inventory() {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const { toast } = useToast();
+  const { canEdit } = useModuleAccess();
+  const readOnly = !canEdit("inventory");
 
   const openNew = () => {
+    if (readOnly) return;
     setEditProduct(null);
     setForm(emptyProduct);
     setModalOpen(true);
   };
 
   const openEdit = (p) => {
+    if (readOnly) return;
     setEditProduct(p);
     setForm({ ...p });
     setModalOpen(true);
   };
 
   const handleSave = async () => {
+    if (readOnly) return;
     if (!form.name || !form.selling_price) {
       toast({ title: "Required Fields", description: "Name and selling price are required", variant: "destructive" });
       return;
@@ -88,7 +95,7 @@ export default function Inventory() {
   const handleDelete = (product) => setDeleteTarget(product);
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (readOnly || !deleteTarget) return;
     await api.entities.Product.delete(deleteTarget.id);
     toast({ title: "Deleted", description: `${deleteTarget.name} removed` });
     setDeleteTarget(null);
@@ -122,10 +129,14 @@ export default function Inventory() {
             {products.length} products · Stock value: {formatCurrency(totalValue)}
           </p>
         </div>
-        <Button onClick={openNew} className="gap-2 bg-green-600 hover:bg-green-700">
-          <Plus size={16} weight="bold" /> Add Product
-        </Button>
+        {!readOnly && (
+          <Button onClick={openNew} className="gap-2 bg-green-600 hover:bg-green-700">
+            <Plus size={16} weight="bold" /> Add Product
+          </Button>
+        )}
       </div>
+
+      {readOnly && <ViewOnlyNotice screen="Inventory" />}
 
       {/* Ad Banner */}
       <AdBanner placement="inventory" />
@@ -189,7 +200,9 @@ export default function Inventory() {
         <div className="text-center py-16 bg-card rounded-2xl border border-border">
           <Package size={44} weight="duotone" className="mx-auto text-muted-foreground/60 mb-3" />
           <p className="text-muted-foreground">No products found</p>
-          <Button onClick={openNew} className="mt-3 bg-green-600 hover:bg-green-700">Add Your First Product</Button>
+          {!readOnly && (
+            <Button onClick={openNew} className="mt-3 bg-green-600 hover:bg-green-700">Add Your First Product</Button>
+          )}
         </div>
       ) : (
         <>
@@ -223,14 +236,16 @@ export default function Inventory() {
                         </Badge>
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center">
-                      <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(product)} aria-label={`Edit ${product.name}`}>
-                        <PencilSimple size={16} weight="regular" className="text-blue-500" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => handleDelete(product)} aria-label={`Delete ${product.name}`}>
-                        <Trash size={16} weight="regular" className="text-red-500" />
-                      </Button>
-                    </div>
+                    {!readOnly && (
+                      <div className="flex shrink-0 items-center">
+                        <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(product)} aria-label={`Edit ${product.name}`}>
+                          <PencilSimple size={16} weight="regular" className="text-blue-500" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => handleDelete(product)} aria-label={`Delete ${product.name}`}>
+                          <Trash size={16} weight="regular" className="text-red-500" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -289,12 +304,16 @@ export default function Inventory() {
                         </td>
                         <td className="px-3 py-3 text-right">
                           <div className="flex justify-end gap-0.5">
-                            <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(product)} aria-label={`Edit ${product.name}`}>
-                              <PencilSimple size={17} weight="regular" className="text-blue-500" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => handleDelete(product)} aria-label={`Delete ${product.name}`}>
-                              <Trash size={17} weight="regular" className="text-red-500" />
-                            </Button>
+                            {!readOnly && (
+                              <>
+                                <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(product)} aria-label={`Edit ${product.name}`}>
+                                  <PencilSimple size={17} weight="regular" className="text-blue-500" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => handleDelete(product)} aria-label={`Delete ${product.name}`}>
+                                  <Trash size={17} weight="regular" className="text-red-500" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>

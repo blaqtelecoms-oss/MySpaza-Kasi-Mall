@@ -391,11 +391,23 @@ version of the same gate.)
   `src/lib/portalAccess.js` maps a granted module to its route
   (`portalCanOpen`, `portalHomePath`, `portalPaths`); `PortalGate` redirects
   everything else to the portal's first allowed screen and the sidebar shows only
-  those routes. That limit lives in the shell: for a portal session on the store's
-  *own* account the table policies still see the owner, so never treat it as a
-  security boundary. The portal's role/rules travel in
-  `current_portal_session()` (`cashier_role`, `cashier_permissions`) so a reload
-  keeps them.
+  those routes. The portal's role/rules travel in `current_portal_session()`
+  (`cashier_role`, `cashier_permissions`) so a reload keeps them.
+- **The portal's `view`/`edit` level is enforced, not decorative.**
+  `supabase/migrations/20261111_portal_permission_enforcement.sql` makes the
+  open staff portal decide what the session may change: while
+  `staff_portal_open()` is true the owner bypass in every app-table policy is
+  off (`is_shop_owner_active`), and `shop_module_level()` reports
+  `shop_cashier_level()` — the portal's own map — instead of a `shop_member`
+  one. A view-only portal can read its screens but its inserts/updates/deletes
+  are refused by RLS (a write also needs the module's `edit`), and settings
+  writes are owner-only even inside a portal. The owner portal and an account
+  with no portal session keep the previous unrestricted behaviour.
+- The screens mirror that: `src/lib/useModuleAccess.js` returns the session's
+  level for a module and each screen hides its add/edit/delete controls (and
+  shows `ViewOnlyNotice`) when it is not `edit`. Add a new mutating control only
+  behind that check, or a view-only portal will see a button the database then
+  refuses.
 - **Inviting staff by email is gone** (`InviteEmployeeDialog` was removed) — the
   three cashiers are the team. `accept_shop_invite()` and the `/invite/<token>`
   route stay so old links still resolve, and any surviving `shop_member` rows are

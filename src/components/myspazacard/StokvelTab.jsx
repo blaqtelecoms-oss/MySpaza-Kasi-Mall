@@ -28,7 +28,7 @@ const fmt = (a) => "R " + Number(a || 0).toLocaleString("en-ZA", { minimumFracti
  * target, members and invitations. Owners can edit a stokvel's details, manage
  * who is in it and remove it (its open invitations go with it).
  */
-export default function StokvelTab() {
+export default function StokvelTab({ readOnly = false }) {
   const accountsQuery = useEntityQuery("StockfellAccount", "list", []);
   const invalidate = useInvalidateEntity();
   const [accounts, setAccounts] = useState([]);
@@ -131,13 +131,15 @@ export default function StokvelTab() {
         <p className="text-sm text-gray-500">
           Save together toward stock and bulk buying. Run as many stokvels as you need.
         </p>
-        <Button
-          size="sm"
-          onClick={() => setDialog({ type: "create", account: null })}
-          className="shrink-0 bg-green-600 hover:bg-green-700"
-        >
-          <Plus size={16} /> New stokvel
-        </Button>
+        {!readOnly && (
+          <Button
+            size="sm"
+            onClick={() => setDialog({ type: "create", account: null })}
+            className="shrink-0 bg-green-600 hover:bg-green-700"
+          >
+            <Plus size={16} /> New stokvel
+          </Button>
+        )}
       </div>
 
       {accounts.length === 0 ? (
@@ -148,12 +150,14 @@ export default function StokvelTab() {
             A savings account linked to your MySpaza Card. Save toward stock and bulk buying with your
             stokvel.
           </p>
-          <Button
-            onClick={() => setDialog({ type: "create", account: null })}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            <Plus size={16} /> Open stokvel
-          </Button>
+          {!readOnly && (
+            <Button
+              onClick={() => setDialog({ type: "create", account: null })}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Plus size={16} /> Open stokvel
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -161,6 +165,7 @@ export default function StokvelTab() {
             <StokvelCard
               key={account.id}
               account={account}
+              readOnly={readOnly}
               onAction={(type) => setDialog({ type, account })}
             />
           ))}
@@ -220,7 +225,7 @@ export default function StokvelTab() {
   );
 }
 
-function StokvelCard({ account, onAction }) {
+function StokvelCard({ account, onAction, readOnly = false }) {
   const members = account.members || [];
   const paidCount = members.filter((member) => member.status === "paid").length;
   const progress =
@@ -270,7 +275,7 @@ function StokvelCard({ account, onAction }) {
         </div>
       </div>
 
-      {!account.invited && (
+      {!account.invited && !readOnly && (
         <div className="grid grid-cols-2 gap-2">
           <Button onClick={() => onAction("deposit")} className="bg-green-600 hover:bg-green-700 h-12">
             <ArrowDownCircle size={18} /> Add to Savings
@@ -285,7 +290,7 @@ function StokvelCard({ account, onAction }) {
         </div>
       )}
 
-      {!account.invited && (
+      {!account.invited && !readOnly && (
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={() => onAction("edit")}>
             <Pencil size={14} /> Edit details
