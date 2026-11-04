@@ -121,7 +121,10 @@ const AuthenticatedApp = () => {
             <Route path="/suppliers" element={<RequireModule module="suppliers"><Suppliers /></RequireModule>} />
             <Route path="/customers" element={<RequireModule module="customers"><RequirePlan feature="customers"><Customers /></RequirePlan></RequireModule>} />
             <Route path="/debtors" element={<RequireModule module="debtors"><RequirePlan feature="debtors"><DebtorsControl /></RequirePlan></RequireModule>} />
-            <Route path="/employees" element={<RequireOwner><RequirePlan feature="employees"><Employees /></RequirePlan></RequireOwner>} />
+            {/* Staff portals (cashiers and supervisors) run on every plan, so
+                this screen is owner-only but not plan-gated; the page itself
+                hides the Premium "Staff logins" section below the plan. */}
+            <Route path="/employees" element={<RequireOwner><Employees /></RequireOwner>} />
             <Route path="/reports" element={<RequireModule module="reports"><RequirePlan feature="reports"><Reports /></RequirePlan></RequireModule>} />
             <Route path="/academy" element={<RequireModule module="academy"><Academy /></RequireModule>} />
             <Route path="/calculators" element={<RequireModule module="calculators"><Calculators /></RequireModule>} />

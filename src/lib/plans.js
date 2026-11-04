@@ -37,6 +37,17 @@ const RANK = { free: 0, premium: 1, ultra: 2 };
  */
 export const SHOP_LIMITS = { free: 1, premium: 2, ultra: null };
 
+/**
+ * How many staff portals a plan may run, per role (`null` = unlimited).
+ * `public.shop_staff_limit()` in 20261108_cashier_roles_and_access.sql enforces
+ * the same numbers when a portal is added or given another role.
+ */
+export const STAFF_LIMITS = {
+  free: { cashier: 1, supervisor: 0 },
+  premium: { cashier: 2, supervisor: 1 },
+  ultra: { cashier: null, supervisor: null },
+};
+
 export const PLANS = [
   {
     key: "free",
@@ -50,6 +61,7 @@ export const PLANS = [
     features: FEATURES.filter((f) => f.plan === "free").map((f) => f.label),
     highlights: [
       "1 shop or branch",
+      "1 cashier portal",
       "POS, Inventory, Cash Up & Daily Sales",
       "Expenses, Suppliers & Academy",
       "Supported by occasional ads",
@@ -67,6 +79,7 @@ export const PLANS = [
     features: FEATURES.filter((f) => RANK[f.plan] <= RANK.premium).map((f) => f.label),
     highlights: [
       "2 shops or branches",
+      "2 cashier portals + 1 supervisor",
       "No ads",
       "Everything in Free, plus Employees",
       "Reports, Customers & Spaza Coach AI",
@@ -84,6 +97,7 @@ export const PLANS = [
     features: FEATURES.map((f) => f.label),
     highlights: [
       "Unlimited shops or branches",
+      "Unlimited cashiers & supervisors",
       "No ads",
       "Everything in Premium, plus Debtors & Accounting",
       "Banking and the full reports suite",
@@ -129,6 +143,21 @@ export function shopCountLabel(planKey) {
   const limit = shopLimit(planKey);
   if (limit === null) return "Unlimited shops";
   return `${limit} shop${limit === 1 ? "" : "s"}`;
+}
+
+/** How many cashier or supervisor portals this plan may run; `null` = unlimited. */
+export function staffLimit(planKey, role) {
+  const limits = planKey in STAFF_LIMITS ? STAFF_LIMITS[planKey] : STAFF_LIMITS.free;
+  return limits[role] ?? STAFF_LIMITS.free[role];
+}
+
+/** "1 cashier portal", "2 supervisor portals", "Unlimited cashier portals". */
+export function staffLimitLabel(planKey, role) {
+  const limit = staffLimit(planKey, role);
+  const noun = role === "supervisor" ? "supervisor" : "cashier";
+  if (limit === null) return `Unlimited ${noun} portals`;
+  if (limit === 0) return `No ${noun} portals`;
+  return `${limit} ${noun} portal${limit === 1 ? "" : "s"}`;
 }
 
 /** A paid period runs 30 days from the confirmed payment, then a 7-day grace. */

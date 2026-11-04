@@ -873,11 +873,51 @@ const shop = {
     return data;
   },
 
-  /** Owner: rename one of the store's three cashiers. */
+  /** Owner: rename one of the store's cashier or supervisor portals. */
   async renameCashier(cashierId, fullName) {
     const { data, error } = await supabase.rpc("rename_shop_cashier", {
       p_cashier_id: cashierId,
       p_full_name: fullName,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Owner: add a cashier or supervisor portal, within the plan's allowance. */
+  async addCashier(shopId, role, fullName) {
+    const { data, error } = await supabase.rpc("add_shop_cashier", {
+      p_shop: shopId,
+      p_role: role,
+      p_full_name: fullName || "",
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Owner: switch a portal between cashier and supervisor. */
+  async setCashierRole(cashierId, role) {
+    const { data, error } = await supabase.rpc("set_shop_cashier_role", {
+      p_cashier_id: cashierId,
+      p_role: role,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Owner: set the screens a portal may reach (module -> "view" | "edit"). */
+  async setCashierPermissions(cashierId, permissions) {
+    const { data, error } = await supabase.rpc("set_shop_cashier_permissions", {
+      p_cashier_id: cashierId,
+      p_permissions: permissions || {},
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Owner: remove a portal (its password and open session go with it). */
+  async removeCashier(cashierId) {
+    const { data, error } = await supabase.rpc("delete_shop_cashier", {
+      p_cashier_id: cashierId,
     });
     if (error) throw new Error(error.message);
     return data;

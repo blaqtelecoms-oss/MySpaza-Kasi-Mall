@@ -1,19 +1,28 @@
 import { useEffect, useState } from "react";
 import { api } from "@/api/client";
+import { cleanPermissions } from "@/lib/modules";
+import { STAFF_ROLES, roleLabel, rolePermissions } from "@/lib/portalAccess";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MobileSelect } from "@/components/ui/mobile-select";
 import { useToast } from "@/components/ui/use-toast";
 import { KeyRound, Loader2, Save } from "lucide-react";
+import PermissionEditor from "@/components/employees/PermissionEditor";
+
+const sameRules = (a, b) =>
+  JSON.stringify(cleanPermissions(a)) === JSON.stringify(cleanPermissions(b));
 
 /**
- * Owner edits one cashier: the name shown on the portal screen, and that
- * cashier's own portal password. The password only ever leaves the browser for
- * the database function that hashes it.
+ * Owner edits one staff portal: its name, whether it is a cashier or a
+ * supervisor, the screens it may open, and its own portal password. The password
+ * only ever leaves the browser for the database function that hashes it.
  */
 export default function EditCashierDialog({ cashier, open, onOpenChange, onSaved }) {
   const [fullName, setFullName] = useState("");
+  const [role, setRole] = useState("cashier");
+  const [permissions, setPermissions] = useState({});
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -22,37 +31,54 @@ export default function EditCashierDialog({ cashier, open, onOpenChange, onSaved
   useEffect(() => {
     if (!cashier) return;
     setFullName(cashier.full_name || "");
+    setRole(cashier.role || "cashier");
+    setPermissions({ ...(cashier.permissions || rolePermissions(cashier.role)) });
     setPassword("");
   }, [cashier]);
+
+  const changeRole = (nextRole) => {
+    // Untouched rules follow the new role's preset; hand-edited ones are kept.
+    if (sameRules(permissions, rolePermissions(role))) setPermissions(rolePermissions(nextRole));
+    setRole(nextRole);
+  };
 
   const handleSave = async () => {
     if (!cashier) return;
     const name = fullName.trim();
     if (!name) {
-      toast({ title: "Enter the cashier's name", variant: "destructive" });
+      toast({ title: "Enter a name for this portal", variant: "destructive" });
       return;
     }
     const nextPassword = password.trim();
     if (nextPassword && nextPassword.length < 6) {
-      toast({ title: "The cashier password needs at least 6 characters", variant: "destructive" });
+      toast({ title: "The portal password needs at least 6 characters", variant: "destructive" });
+      return;
+    }
+    const rules = cleanPermissions(permissions);
+    if (Object.keys(rules).length === 0) {
+      toast({ title: "Give this portal at least one screen", variant: "destructive" });
       return;
     }
 
     setSaving(true);
     try {
+      if (role !== cashier.role) await api.shop.setCashierRole(cashier.id, role);
       if (name !== cashier.full_name) await api.shop.renameCashier(cashier.id, name);
+      if (!sameRules(rules, cashier.permissions || {})) {
+        await api.shop.setCashierPermissions(cashier.id, rules);
+      }
       if (nextPassword) await api.shop.setCashierPassword(cashier.id, nextPassword);
       toast({
-        title: "Cashier updated",
+        title: `${roleLabel(role)} updated`,
         description: nextPassword
-          ? `${name}'s portal password was changed.`
-          : `${name} now shows on the portal screen with that name.`,
+          ? `${name}'s access and portal password were changed.`
+          : `${name}'s access was updated.`,
       });
       setPassword("");
       onSaved?.();
       onOpenChange(false);
     } catch (err) {
-      toast({ title: "Could not update this cashier", description: err.message, variant: "destructive" });
+      toast({ title: "Could not update this portal", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -65,7 +91,7 @@ export default function EditCashierDialog({ cashier, open, onOpenChange, onSaved
       await api.shop.clearCashierPassword(cashier.id);
       toast({
         title: "Password removed",
-        description: `${cashier.full_name} can't open the cashier portal until you set a new one.`,
+        description: `${cashier.full_name} can't open this portal until you set a new one.`,
       });
       onSaved?.();
       onOpenChange(false);
@@ -78,14 +104,14 @@ export default function EditCashierDialog({ cashier, open, onOpenChange, onSaved
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Cashier {cashier?.slot ?? ""}</DialogTitle>
+          <DialogTitle>Edit {roleLabel(cashier?.role)} portal {cashier?.slot ?? ""}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">
           <div>
-            <Label htmlFor="cashier-name">Cashier name</Label>
+            <Label htmlFor="cashier-name">Name</Label>
             <Input
               id="cashier-name"
               className="mt-1"
@@ -99,15 +125,30 @@ export default function EditCashierDialog({ cashier, open, onOpenChange, onSaved
             </p>
           </div>
 
+          <div>
+            <Label>Role</Label>
+            <MobileSelect
+              value={role}
+              onValueChange={changeRole}
+              placeholder="Choose a role"
+              options={STAFF_ROLES.map((option) => ({ value: option.key, label: option.label }))}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              {STAFF_ROLES.find((option) => option.key === role)?.blurb}
+            </p>
+          </div>
+
+          <PermissionEditor permissions={permissions} onChange={setPermissions} />
+
           <div className="rounded-lg border border-border p-3">
             <Label htmlFor="cashier-password" className="flex items-center gap-1.5">
               <KeyRound size={14} className="text-muted-foreground" aria-hidden="true" />
-              Cashier portal password
+              Portal password
             </Label>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {cashier?.has_password
-                ? "Set. This cashier types it to open the till."
-                : "Not set yet — this cashier can't open the till until you set one."}
+                ? "Set. This person types it to open the portal."
+                : "Not set yet — this portal can't open until you set one."}
             </p>
             <Input
               id="cashier-password"
@@ -144,7 +185,7 @@ export default function EditCashierDialog({ cashier, open, onOpenChange, onSaved
             className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {saving ? "Saving…" : "Save cashier"}
+            {saving ? "Saving…" : "Save access"}
           </Button>
         </div>
       </DialogContent>

@@ -17,6 +17,8 @@ function fromSession(session) {
     shopId: session.shop_id,
     cashierId: session.cashier_id || null,
     cashierName: session.cashier_name || null,
+    role: session.cashier_role || null,
+    permissions: session.cashier_permissions || null,
     expiresAt: session.expires_at || null,
   };
 }
@@ -67,6 +69,8 @@ export function PortalProvider({ children }) {
         shopId,
         cashierId: null,
         cashierName: null,
+        role: null,
+        permissions: null,
         expiresAt: data.expires_at || null,
       });
       await queryClientInstance.invalidateQueries();
@@ -74,7 +78,7 @@ export function PortalProvider({ children }) {
     return data;
   }, []);
 
-  /** Cashier portal: opens only with the chosen cashier's own password. */
+  /** Cashier portal: opens only with the chosen portal's own password. */
   const openCashierPortal = useCallback(async (shopId, cashierId, password) => {
     const data = await api.shop.openCashierPortal(shopId, cashierId, password);
     if (data?.ok) {
@@ -83,6 +87,8 @@ export function PortalProvider({ children }) {
         shopId,
         cashierId: data.cashier_id || cashierId,
         cashierName: data.cashier_name || null,
+        role: data.cashier_role || null,
+        permissions: data.cashier_permissions || null,
         expiresAt: data.expires_at || null,
       });
       // The session is what lets the shop's tables through, so refetch them.

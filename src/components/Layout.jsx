@@ -11,7 +11,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useAuth } from "@/lib/AuthContext";
 import { usePortal } from "@/lib/PortalContext";
-import { CASHIER_PATHS } from "@/lib/portalAccess";
+import { portalPaths, roleLabel } from "@/lib/portalAccess";
 import { queryClientInstance } from "@/lib/query-client";
 import OfflineBanner from "@/components/OfflineBanner";
 import ShopSwitcher from "@/components/shop/ShopSwitcher";
@@ -49,11 +49,13 @@ export default function Layout() {
   const { user, logout, shop, can } = useAuth();
   const { portal, lockPortal } = usePortal();
   const navigate = useNavigate();
-  // The cashier portal is the till only. Anyone else sees the owner screens or,
-  // for an employee account, the modules the owner granted them.
+  // A cashier or supervisor portal shows only the screens the owner granted
+  // that portal. Anyone else sees the owner screens or, for an employee
+  // account, the modules the owner granted them.
   const cashierMode = portal?.method === "cashier";
+  const cashierNavPaths = cashierMode ? portalPaths(portal) : null;
   const visibleNavItems = navItems.filter((item) => {
-    if (cashierMode) return CASHIER_PATHS.includes(item.path);
+    if (cashierMode) return cashierNavPaths.includes(item.path);
     if (item.adminOnly && user?.role !== "admin") return false;
     if (item.ownerOnly && !shop?.isOwner) return false;
     if (item.module && !can(item.module)) return false;
@@ -256,7 +258,7 @@ export default function Layout() {
                     {portal && (
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
                         {portal.method === "cashier"
-                          ? `Cashier portal${portal.cashierName ? ` · ${portal.cashierName}` : ""}`
+                          ? `${roleLabel(portal.role)} portal${portal.cashierName ? ` · ${portal.cashierName}` : ""}`
                           : "Owner portal"}
                       </p>
                     )}

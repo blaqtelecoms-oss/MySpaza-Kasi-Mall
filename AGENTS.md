@@ -351,13 +351,29 @@ version of the same gate.)
   hashes live in tables with RLS on and **no policies**, so no browser can read
   one; five wrong attempts lock that portal for five minutes, and changing a
   password closes any portal already open on it.
-- **Three cashiers per store, seeded by the store itself.** A `shop` insert
-  trigger calls `shop_seed_cashiers()`; the migration backfills the stores that
-  already existed and `my_portal_options()` calls it for a primary shop that has
-  no `shop` row yet. It inserts only the missing slots (`slot` 1–3, unique per
-  shop), so re-running it never duplicates a cashier. The owner renames each one
-  and sets its password on `/employees` (`rename_shop_cashier`,
-  `set_shop_cashier_password`, `clear_shop_cashier_password`).
+- **Staff portals have a role and their own access rules**
+  (`20261108_cashier_roles_and_access.sql`). A `shop_cashier` row is either a
+  `cashier` or a `supervisor`, and carries a `permissions` map (module key →
+  `view`/`edit`, the same keys as `src/lib/modules.js`). Slot 2 used to be
+  "Cashier 2"; the migration renamed it **Supervisor** with supervisor access and
+  gave every existing portal its role's preset rules. The owner edits the name,
+  the role, the screens and the password on `/employees`
+  (`rename_shop_cashier`, `set_shop_cashier_role`, `set_shop_cashier_permissions`,
+  `set_shop_cashier_password`, `clear_shop_cashier_password`,
+  `delete_shop_cashier`). Changing a portal's role, rules or password deletes its
+  `shop_portal_session`, so it starts again on the new rules.
+- **The plan decides how many staff portals a store runs.** Free: 1 cashier, no
+  supervisor. Premium: 2 cashiers, 1 supervisor. Ultra: unlimited
+  (`null` = no cap — never resolve it with `??`). `STAFF_LIMITS` in
+  `src/lib/plans.js` mirrors `public.shop_staff_limit()`; `add_shop_cashier()`
+  and `set_shop_cashier_role()` enforce it and raise the message the owner sees.
+  `shop_seed_cashiers()` now creates one cashier (plus a supervisor when the plan
+  allows) and only missing slots, and the migration trimmed *unused* default
+  cashier slots a store's plan does not cover — a portal with a password or an
+  owner-chosen name is never removed.
+- `/employees` is owner-only but **not** plan-gated any more, because every plan
+  rings up sales on a till portal; the page hides the Premium "Staff logins"
+  section itself (`canUse("employees")`).
 - **The password gates the data, not only the screen:** opening a portal writes a
   `shop_portal_session` (12 h), and `shop_module_level()` only counts a
   membership whose `shop_portal_open()` says yes. Session rows key on the
@@ -366,19 +382,23 @@ version of the same gate.)
   never open.
 - `PortalContext` restores whichever session the database reports, so a reload
   stays inside the portal. Sign out and "Switch portal" call `close_portal()`.
-- **A cashier portal is the till.** `src/lib/portalAccess.js` lists the routes a
-  cashier session may open (`/pos`, `/inventory`, `/daily-sales`); `PortalGate`
-  redirects everything else to `/pos` and the sidebar hides the rest. That limit
-  lives in the shell: for a cashier session on the store's *own* account the table
-  policies still see the owner, so never treat the list as a security boundary.
+- **A cashier or supervisor portal only opens the screens it was granted.**
+  `src/lib/portalAccess.js` maps a granted module to its route
+  (`portalCanOpen`, `portalHomePath`, `portalPaths`); `PortalGate` redirects
+  everything else to the portal's first allowed screen and the sidebar shows only
+  those routes. That limit lives in the shell: for a portal session on the store's
+  *own* account the table policies still see the owner, so never treat it as a
+  security boundary. The portal's role/rules travel in
+  `current_portal_session()` (`cashier_role`, `cashier_permissions`) so a reload
+  keeps them.
 - **Inviting staff by email is gone** (`InviteEmployeeDialog` was removed) — the
   three cashiers are the team. `accept_shop_invite()` and the `/invite/<token>`
   route stay so old links still resolve, and any surviving `shop_member` rows are
   listed on `/employees` as "Staff logins". The old member-keyed
   `shop_cashier_access` passwords were cleared, so no employee is left locked out
   by a password nobody can now set.
-- `/employees` needs the `employees` feature (Premium+), so a Free shop cannot
-  set cashier passwords; verify that screen on a Premium/Ultra test shop.
+- `/employees` is owner-only and open on every plan (see the staff allowance
+  above); the Premium "Staff logins" section inside it needs `employees`.
 
 ## Sandbox runtime (`docker-compose.base44.yml`)
 

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MobileSelect } from "@/components/ui/mobile-select";
 import PortalOptionCard from "@/components/portal/PortalOptionCard";
+import { portalHomePath, roleLabel } from "@/lib/portalAccess";
 
 /**
  * The step between signing in and the shop: which store, and which portal.
@@ -43,7 +44,8 @@ export default function PortalSelect() {
     if (shop?.shopId) setStoreId(shop.shopId);
   }, [shop?.shopId]);
 
-  // This store's three cashiers, and whether its owner portal has a password.
+  // This store's cashier and supervisor portals, and whether its owner portal
+  // has a password.
   useEffect(() => {
     let active = true;
     setOptions(null);
@@ -131,7 +133,7 @@ export default function PortalSelect() {
   const enterCashier = async (event) => {
     event.preventDefault();
     if (!cashierId) {
-      setError("Choose which cashier is opening the till.");
+      setError("Choose who is opening the till.");
       return;
     }
     setBusy("cashier");
@@ -139,23 +141,27 @@ export default function PortalSelect() {
     try {
       const result = await openCashierPortal(activeStoreId, cashierId, cashierPassword);
       if (result?.ok) {
-        navigate("/pos", { replace: true });
+        // Land on the first screen this portal's access actually allows.
+        navigate(
+          portalHomePath({ role: result.cashier_role, permissions: result.cashier_permissions }),
+          { replace: true }
+        );
         return;
       }
       if (result?.reason === "not_set") {
-        setError(`${selectedCashier?.full_name || "That cashier"} has no password yet. The store owner sets it on the Employees screen.`);
+        setError(`${selectedCashier?.full_name || "That portal"} has no password yet. The store owner sets it on the Employees screen.`);
       } else if (result?.reason === "locked") {
-        setError("Too many wrong attempts for this cashier. Try again in a few minutes.");
+        setError("Too many wrong attempts for this portal. Try again in a few minutes.");
       } else if (result?.reason === "invalid") {
         const left = result?.attempts_left;
         setError(
-          `That cashier password is not right.${typeof left === "number" && left > 0 ? ` ${left} ${left === 1 ? "try" : "tries"} left.` : ""}`
+          `That portal password is not right.${typeof left === "number" && left > 0 ? ` ${left} ${left === 1 ? "try" : "tries"} left.` : ""}`
         );
       } else {
-        setError("Could not open the cashier portal. Ask the store owner to check this cashier.");
+        setError("Could not open the staff portal. Ask the store owner to check this portal.");
       }
     } catch (err) {
-      setError(err.message || "Could not open the cashier portal.");
+      setError(err.message || "Could not open the staff portal.");
     } finally {
       setBusy(null);
     }
@@ -317,8 +323,8 @@ export default function PortalSelect() {
 
             <PortalOptionCard
               icon={ShoppingBasket}
-              title="Cashier portal"
-              subtitle="Ring up sales with only the access the owner gave you."
+              title="Cashier or supervisor portal"
+              subtitle="Work the till with only the access the owner gave you."
               tone="cashier"
               action={
                 <form onSubmit={enterCashier} className="space-y-2.5">
@@ -329,17 +335,19 @@ export default function PortalSelect() {
                   ) : (
                     <>
                       <div className="space-y-1.5">
-                        <Label className="text-[13px] font-medium text-slate-700">Cashier</Label>
+                        <Label className="text-[13px] font-medium text-slate-700">
+                          Who is opening the till
+                        </Label>
                         <MobileSelect
                           value={cashierId || ""}
                           onValueChange={setCashierId}
-                          placeholder="Choose a cashier"
+                          placeholder="Choose a cashier or supervisor"
                           triggerClassName="h-11 border-slate-300 bg-white"
                           options={cashiers.map((cashier) => ({
                             value: cashier.id,
                             label: cashier.has_password
-                              ? cashier.full_name
-                              : `${cashier.full_name} · no password yet`,
+                              ? `${cashier.full_name} · ${roleLabel(cashier.role)}`
+                              : `${cashier.full_name} · ${roleLabel(cashier.role)} · no password yet`,
                           }))}
                         />
                       </div>
@@ -348,13 +356,13 @@ export default function PortalSelect() {
                           htmlFor="cashier-password"
                           className="text-[13px] font-medium text-slate-700"
                         >
-                          Cashier password
+                          Portal password
                         </Label>
                         <Input
                           id="cashier-password"
                           type="password"
                           autoComplete="current-password"
-                          placeholder="This cashier's password"
+                          placeholder="Their portal password"
                           value={cashierPassword}
                           onChange={(event) => setCashierPassword(event.target.value)}
                           className="h-11 rounded-lg border-slate-300 bg-white"
@@ -383,7 +391,7 @@ export default function PortalSelect() {
                     ) : (
                       <ShieldCheck size={16} aria-hidden="true" />
                     )}
-                    Open cashier portal
+                    Open staff portal
                   </Button>
                 </form>
               }
@@ -393,7 +401,8 @@ export default function PortalSelect() {
         </div>
 
         <p className="mt-4 text-center text-[11px] leading-relaxed text-slate-500">
-          Each cashier has their own password, and the owner portal has its own password too.
+          Each cashier and supervisor has their own password, and the owner portal has its own
+          password too.
         </p>
       </div>
     </div>
