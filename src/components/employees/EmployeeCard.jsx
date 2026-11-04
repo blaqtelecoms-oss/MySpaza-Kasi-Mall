@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit, KeyRound, Mail, Trash2 } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { MODULE_LABELS } from "@/lib/modules";
 
 function ModuleChips({ permissions }) {
@@ -36,7 +36,7 @@ const salaryLabel = (value) =>
     : "R " + Number(value).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " / month";
 
 /** An employee who has accepted and can sign in to this shop. */
-export function EmployeeCard({ member, hasPortalPassword, onEdit, onRevoke }) {
+export function EmployeeCard({ member, onEdit, onRevoke }) {
   const displayName = member.full_name || member.member_email || "?";
   const initial = displayName.trim().charAt(0).toUpperCase();
   const salary = salaryLabel(member.monthly_salary);
@@ -58,19 +58,6 @@ export function EmployeeCard({ member, hasPortalPassword, onEdit, onRevoke }) {
               </p>
               <div className="mt-1 flex flex-wrap items-center gap-1">
                 <Badge variant="outline" className="text-xs">{member.role}</Badge>
-                {typeof hasPortalPassword === "boolean" && (
-                  <Badge
-                    variant="outline"
-                    className={
-                      hasPortalPassword
-                        ? "gap-1 border-teal-200 text-[11px] text-teal-700 dark:border-teal-900 dark:text-teal-400"
-                        : "gap-1 text-[11px] text-muted-foreground"
-                    }
-                  >
-                    <KeyRound size={11} aria-hidden="true" />
-                    {hasPortalPassword ? "Portal password" : "No portal password"}
-                  </Badge>
-                )}
               </div>
               <div className="mt-1.5">
                 <ModuleChips permissions={member.permissions} />
@@ -102,54 +89,3 @@ export function EmployeeCard({ member, hasPortalPassword, onEdit, onRevoke }) {
   );
 }
 
-/** An invitation that has been emailed but not accepted yet. */
-export function PendingInviteCard({ invite, onCancel }) {
-  const expires = invite.expires_at
-    ? new Date(invite.expires_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })
-    : null;
-  return (
-    <Card className="border-dashed">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-dashed border-border">
-              <Mail size={18} className="text-muted-foreground" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="truncate text-sm font-bold text-foreground">{invite.full_name || invite.email}</h3>
-              {invite.full_name && (
-                <p className="truncate text-xs text-muted-foreground">{invite.email}</p>
-              )}
-              <p className="mt-1 text-xs font-medium text-foreground">
-                {salaryLabel(invite.monthly_salary) || (
-                  <span className="font-normal text-muted-foreground">No salary set</span>
-                )}
-              </p>
-              <Badge variant="outline" className="mt-1 text-xs">{invite.role}</Badge>
-              <div className="mt-1.5">
-                <ModuleChips permissions={invite.permissions} />
-              </div>
-            </div>
-          </div>
-          <Badge className="shrink-0 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-            Invite sent
-          </Badge>
-        </div>
-
-        <div className="mt-3 flex items-center gap-2">
-          <p className="flex-1 text-xs text-muted-foreground">
-            {expires ? `Link expires ${expires}` : "Waiting for them to accept"}
-          </p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50"
-            onClick={() => onCancel(invite)}
-          >
-            <Trash2 size={14} /> Cancel
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}

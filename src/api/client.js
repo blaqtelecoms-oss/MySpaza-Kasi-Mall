@@ -788,27 +788,6 @@ const shop = {
     return data?.onboarded_at || null;
   },
 
-  /** Ask the email service to create the invitation and send it with Resend. */
-  async invite({ email, fullName, monthlySalary, role, permissions }) {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) throw new Error("Sign in to invite employees.");
-
-    // The employee joins the branch the owner is working in.
-    const shopId = await currentShopId();
-
-    const response = await fetch("/api/invitations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ email, fullName, monthlySalary, role, permissions, shopId }),
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(inviteError(response.status, body));
-    return body;
-  },
-
   /** Shop, role and modules behind an invitation link (works signed out). */
   async invitePreview(token) {
     const { data, error } = await supabase.rpc("shop_invite_preview", { p_token: token });
@@ -850,24 +829,55 @@ const shop = {
   },
 
   /**
-   * Store portals (migration 20261106_shop_portals.sql). The password check and
-   * the session it opens happen in the database; every app table policy only
-   * counts an employee whose cashier session is open, so this is the real gate
-   * and not just the screen in front of it.
+   * Store portals (migration 20261107_shop_portal_passwords.sql). Every store
+   * has three preset cashiers and its own owner portal password. The password
+   * check and the session it opens happen in the database, so the browser never
+   * holds a hash and the open session — not the screen — is what counts.
    */
 
-  /** Owner portal: the account is the credential; SQL confirms store ownership. */
-  async openOwnerPortal(shopId) {
-    const { data, error } = await supabase.rpc("unlock_owner_portal", { p_shop: shopId });
+  /** This store's three cashiers, and whether the owner portal password is set. */
+  async portalOptions(shopId) {
+    const { data, error } = await supabase.rpc("my_portal_options", { p_shop: shopId });
+    if (error) throw new Error(error.message);
+    return data ?? null;
+  },
+
+  /** Owner: create or change the store's own portal password. */
+  async setOwnerPortalPassword(shopId, password) {
+    const { data, error } = await supabase.rpc("set_owner_portal_password", {
+      p_shop: shopId,
+      p_password: password,
+    });
     if (error) throw new Error(error.message);
     return data;
   },
 
-  /** Cashier portal: verifies this cashier's own password. */
-  async openCashierPortal(shopId, password) {
-    const { data, error } = await supabase.rpc("unlock_cashier_portal", {
+  /** Owner portal: the store's portal password, checked in SQL. */
+  async openOwnerPortal(shopId, password) {
+    const { data, error } = await supabase.rpc("open_owner_portal", {
       p_shop: shopId,
       p_password: password || "",
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Cashier portal: the chosen cashier's own password, checked in SQL. */
+  async openCashierPortal(shopId, cashierId, password) {
+    const { data, error } = await supabase.rpc("open_cashier_portal_slot", {
+      p_shop: shopId,
+      p_cashier_id: cashierId,
+      p_password: password || "",
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  /** Owner: rename one of the store's three cashiers. */
+  async renameCashier(cashierId, fullName) {
+    const { data, error } = await supabase.rpc("rename_shop_cashier", {
+      p_cashier_id: cashierId,
+      p_full_name: fullName,
     });
     if (error) throw new Error(error.message);
     return data;
@@ -887,35 +897,23 @@ const shop = {
     return { ok: true };
   },
 
-  /** Employee: does this store require a password from me, and is one set? */
-  async cashierAccess(shopId) {
-    const { data, error } = await supabase.rpc("my_cashier_access", { p_shop: shopId });
-    if (error) throw new Error(error.message);
-    return data ?? null;
-  },
-
-  /** Owner: set the individual password a cashier uses for their portal. */
-  async setCashierPassword(memberId, password) {
-    const { data, error } = await supabase.rpc("set_cashier_password", {
-      p_member_id: memberId,
+  /** Owner: set or change one cashier's portal password. */
+  async setCashierPassword(cashierId, password) {
+    const { data, error } = await supabase.rpc("set_shop_cashier_password", {
+      p_cashier_id: cashierId,
       p_password: password,
     });
     if (error) throw new Error(error.message);
     return data;
   },
 
-  /** Owner: drop the password, so that cashier opens the portal with no prompt. */
-  async clearCashierPassword(memberId) {
-    const { data, error } = await supabase.rpc("clear_cashier_password", { p_member_id: memberId });
+  /** Owner: remove a cashier's password, which closes that cashier's portal. */
+  async clearCashierPassword(cashierId) {
+    const { data, error } = await supabase.rpc("clear_shop_cashier_password", {
+      p_cashier_id: cashierId,
+    });
     if (error) throw new Error(error.message);
     return data;
-  },
-
-  /** Owner: which employees of this store already have a cashier password. */
-  async cashierPasswords(shopId) {
-    const { data, error } = await supabase.rpc("cashier_password_status", { p_shop: shopId });
-    if (error) throw new Error(error.message);
-    return Array.isArray(data) ? data : [];
   },
 };
 

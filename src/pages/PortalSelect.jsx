@@ -12,9 +12,9 @@ import PortalOptionCard from "@/components/portal/PortalOptionCard";
 
 /**
  * The step between signing in and the shop: which store, and which portal.
- * The owner portal is the owner's own account; the cashier portal asks for the
- * individual password the owner set for that cashier, and the database checks
- * it before any of the shop's data opens.
+ * Both portals have their own password, checked in the database — the owner
+ * portal with the store's owner password, a cashier portal with the password
+ * the owner set for that cashier.
  */
 export default function PortalSelect() {
   const { shop, user, switchShop, logout } = useAuth();
@@ -22,8 +22,11 @@ export default function PortalSelect() {
   const navigate = useNavigate();
 
   const [storeId, setStoreId] = useState(null);
-  const [password, setPassword] = useState("");
-  const [access, setAccess] = useState(null);
+  const [ownerPassword, setOwnerPassword] = useState("");
+  const [ownerConfirm, setOwnerConfirm] = useState("");
+  const [cashierId, setCashierId] = useState(null);
+  const [cashierPassword, setCashierPassword] = useState("");
+  const [options, setOptions] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(null); // "store" | "owner" | "cashier"
 
@@ -40,27 +43,39 @@ export default function PortalSelect() {
     if (shop?.shopId) setStoreId(shop.shopId);
   }, [shop?.shopId]);
 
-  // Does this store require a cashier password from me, and is one set?
+  // This store's three cashiers, and whether its owner portal has a password.
   useEffect(() => {
     let active = true;
-    setAccess(null);
-    setPassword("");
+    setOptions(null);
+    setCashierId(null);
+    setCashierPassword("");
+    setOwnerPassword("");
+    setOwnerConfirm("");
     setError("");
-    if (!shop || shop.isOwner || !activeStoreId) return undefined;
+    if (!activeStoreId) return undefined;
     api.shop
-      .cashierAccess(activeStoreId)
-      .then((data) => active && setAccess(data))
-      .catch(() => active && setAccess(null));
+      .portalOptions(activeStoreId)
+      .then((data) => active && setOptions(data))
+      .catch((err) => active && setError(err.message || "Could not load this store's portals."));
     return () => {
       active = false;
     };
-  }, [shop?.isOwner, activeStoreId]);
+  }, [activeStoreId]);
+
+  const cashiers = options?.cashiers || [];
+  const selectedCashier = cashiers.find((cashier) => cashier.id === cashierId) || null;
+  const ownerPasswordSet = options?.owner_password_set !== false;
+
+  useEffect(() => {
+    if (cashiers.length === 0) return;
+    if (!cashiers.some((cashier) => cashier.id === cashierId)) {
+      setCashierId(cashiers[0].id);
+    }
+  }, [cashiers, cashierId]);
 
   const handleStore = async (id) => {
     if (!id || id === activeStoreId) return;
     setStoreId(id);
-    setError("");
-    setPassword("");
     if (!shop?.isOwner) return;
     setBusy("store");
     try {
@@ -72,12 +87,40 @@ export default function PortalSelect() {
     }
   };
 
-  const enterOwner = async () => {
+  const enterOwner = async (event) => {
+    event.preventDefault();
     setBusy("owner");
     setError("");
     try {
-      await openOwnerPortal(activeStoreId);
-      navigate("/", { replace: true });
+      if (!ownerPasswordSet) {
+        if (ownerPassword.trim().length < 6) {
+          setError("Choose an owner portal password of at least 6 characters.");
+          return;
+        }
+        if (ownerPassword !== ownerConfirm) {
+          setError("The two passwords do not match.");
+          return;
+        }
+        await api.shop.setOwnerPortalPassword(activeStoreId, ownerPassword);
+      }
+      const result = await openOwnerPortal(activeStoreId, ownerPassword);
+      if (result?.ok) {
+        navigate("/", { replace: true });
+        return;
+      }
+      if (result?.reason === "not_set") {
+        setError("Set a password for this store's owner portal first.");
+        setOptions((current) => (current ? { ...current, owner_password_set: false } : current));
+      } else if (result?.reason === "locked") {
+        setError("Too many wrong attempts. Try again in a few minutes.");
+      } else if (result?.reason === "invalid") {
+        const left = result?.attempts_left;
+        setError(
+          `That owner portal password is not right.${typeof left === "number" && left > 0 ? ` ${left} ${left === 1 ? "try" : "tries"} left.` : ""}`
+        );
+      } else {
+        setError("Could not open the owner portal.");
+      }
     } catch (err) {
       setError(err.message || "Could not open the owner portal.");
     } finally {
@@ -87,23 +130,29 @@ export default function PortalSelect() {
 
   const enterCashier = async (event) => {
     event.preventDefault();
+    if (!cashierId) {
+      setError("Choose which cashier is opening the till.");
+      return;
+    }
     setBusy("cashier");
     setError("");
     try {
-      const result = await openCashierPortal(activeStoreId, password);
+      const result = await openCashierPortal(activeStoreId, cashierId, cashierPassword);
       if (result?.ok) {
-        navigate("/", { replace: true });
+        navigate("/pos", { replace: true });
         return;
       }
-      if (result?.reason === "locked") {
-        setError("Too many wrong attempts. Try again in a few minutes.");
+      if (result?.reason === "not_set") {
+        setError(`${selectedCashier?.full_name || "That cashier"} has no password yet. The store owner sets it on the Employees screen.`);
+      } else if (result?.reason === "locked") {
+        setError("Too many wrong attempts for this cashier. Try again in a few minutes.");
       } else if (result?.reason === "invalid") {
         const left = result?.attempts_left;
         setError(
           `That cashier password is not right.${typeof left === "number" && left > 0 ? ` ${left} ${left === 1 ? "try" : "tries"} left.` : ""}`
         );
       } else {
-        setError("Could not open the cashier portal. Ask the store owner to check your access.");
+        setError("Could not open the cashier portal. Ask the store owner to check this cashier.");
       }
     } catch (err) {
       setError(err.message || "Could not open the cashier portal.");
@@ -119,8 +168,6 @@ export default function PortalSelect() {
       </div>
     );
   }
-
-  const hasPassword = access?.has_password !== false;
 
   return (
     <div className="min-h-screen bg-[#F5F6F8] px-4 py-7 text-slate-900 sm:px-6">
@@ -198,17 +245,67 @@ export default function PortalSelect() {
               subtitle="Everything in the store: sales, stock, cash-up, staff and settings."
               action={
                 shop.isOwner ? (
-                  <Button
-                    onClick={enterOwner}
-                    disabled={busy !== null || !activeStoreId}
-                    className="h-11 w-full gap-2 rounded-lg bg-[#0D0D0D] text-white shadow-none hover:bg-[#1d1d1d]"
-                  >
-                    {busy === "owner" ? (
-                      <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-                    ) : null}
-                    Enter owner portal
-                    {busy === "owner" ? null : <ArrowRight size={16} aria-hidden="true" />}
-                  </Button>
+                  <form onSubmit={enterOwner} className="space-y-2.5">
+                    {options === null ? (
+                      <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                        <Loader2 size={12} className="animate-spin" aria-hidden="true" /> Loading…
+                      </p>
+                    ) : ownerPasswordSet ? (
+                      <div className="space-y-1.5">
+                        <Label
+                          htmlFor="owner-password"
+                          className="text-[13px] font-medium text-slate-700"
+                        >
+                          Owner portal password
+                        </Label>
+                        <Input
+                          id="owner-password"
+                          type="password"
+                          autoComplete="current-password"
+                          placeholder="Your owner portal password"
+                          value={ownerPassword}
+                          onChange={(event) => setOwnerPassword(event.target.value)}
+                          className="h-11 rounded-lg border-slate-300 bg-white"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-xs leading-relaxed text-slate-500">
+                          Set the password for this store's owner portal. You will type it after
+                          signing in.
+                        </p>
+                        <Input
+                          id="owner-password"
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder="New owner portal password"
+                          value={ownerPassword}
+                          onChange={(event) => setOwnerPassword(event.target.value)}
+                          className="h-11 rounded-lg border-slate-300 bg-white"
+                        />
+                        <Input
+                          id="owner-password-confirm"
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder="Repeat the password"
+                          value={ownerConfirm}
+                          onChange={(event) => setOwnerConfirm(event.target.value)}
+                          className="h-11 rounded-lg border-slate-300 bg-white"
+                        />
+                      </>
+                    )}
+                    <Button
+                      type="submit"
+                      disabled={busy !== null || options === null || !activeStoreId}
+                      className="h-11 w-full gap-2 rounded-lg bg-[#0D0D0D] text-white shadow-none hover:bg-[#1d1d1d]"
+                    >
+                      {busy === "owner" ? (
+                        <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                      ) : null}
+                      {ownerPasswordSet ? "Enter owner portal" : "Create password and enter"}
+                      {busy === "owner" ? null : <ArrowRight size={16} aria-hidden="true" />}
+                    </Button>
+                  </form>
                 ) : (
                   <p className="rounded-lg bg-slate-100 px-3 py-2.5 text-xs leading-relaxed text-slate-500">
                     Only the store owner can open this portal. Ask the owner if you need owner
@@ -223,16 +320,29 @@ export default function PortalSelect() {
               title="Cashier portal"
               subtitle="Ring up sales with only the access the owner gave you."
               tone="cashier"
-              disabled={shop.isOwner}
               action={
-                shop.isOwner ? (
-                  <p className="rounded-lg bg-slate-100 px-3 py-2.5 text-xs leading-relaxed text-slate-500">
-                    This portal is for your staff. Set each cashier's own password in Employees, on
-                    the owner portal.
-                  </p>
-                ) : (
-                  <form onSubmit={enterCashier} className="space-y-2.5">
-                    {hasPassword && (
+                <form onSubmit={enterCashier} className="space-y-2.5">
+                  {options === null ? (
+                    <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <Loader2 size={12} className="animate-spin" aria-hidden="true" /> Loading…
+                    </p>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label className="text-[13px] font-medium text-slate-700">Cashier</Label>
+                        <MobileSelect
+                          value={cashierId || ""}
+                          onValueChange={setCashierId}
+                          placeholder="Choose a cashier"
+                          triggerClassName="h-11 border-slate-300 bg-white"
+                          options={cashiers.map((cashier) => ({
+                            value: cashier.id,
+                            label: cashier.has_password
+                              ? cashier.full_name
+                              : `${cashier.full_name} · no password yet`,
+                          }))}
+                        />
+                      </div>
                       <div className="space-y-1.5">
                         <Label
                           htmlFor="cashier-password"
@@ -244,45 +354,46 @@ export default function PortalSelect() {
                           id="cashier-password"
                           type="password"
                           autoComplete="current-password"
-                          placeholder="Your cashier password"
-                          value={password}
-                          onChange={(event) => setPassword(event.target.value)}
+                          placeholder="This cashier's password"
+                          value={cashierPassword}
+                          onChange={(event) => setCashierPassword(event.target.value)}
                           className="h-11 rounded-lg border-slate-300 bg-white"
                         />
                       </div>
-                    )}
-                    {access?.has_password === false && (
-                      <p className="text-xs leading-relaxed text-slate-500">
-                        The owner hasn't set a cashier password for you yet, so your account opens
-                        it.
-                      </p>
-                    )}
-                    <Button
-                      type="submit"
-                      disabled={busy !== null || access === null}
-                      className="h-11 w-full gap-2 rounded-lg bg-teal-600 text-white shadow-none hover:bg-teal-700"
-                    >
-                      {busy === "cashier" ? (
-                        <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-                      ) : (
-                        <ShieldCheck size={16} aria-hidden="true" />
+                      {selectedCashier && !selectedCashier.has_password && (
+                        <p className="text-xs leading-relaxed text-slate-500">
+                          {selectedCashier.full_name} has no password yet. The store owner sets it on
+                          the Employees screen.
+                        </p>
                       )}
-                      Open cashier portal
-                    </Button>
-                  </form>
-                )
+                    </>
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={
+                      busy !== null ||
+                      options === null ||
+                      !cashierId ||
+                      selectedCashier?.has_password === false
+                    }
+                    className="h-11 w-full gap-2 rounded-lg bg-teal-600 text-white shadow-none hover:bg-teal-700"
+                  >
+                    {busy === "cashier" ? (
+                      <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                    ) : (
+                      <ShieldCheck size={16} aria-hidden="true" />
+                    )}
+                    Open cashier portal
+                  </Button>
+                </form>
               }
-              hint={
-                shop.isOwner
-                  ? undefined
-                  : "Forgotten it? The store owner can set a new one for you."
-              }
+              hint="Forgotten it? The store owner can set a new one for you."
             />
           </div>
         </div>
 
         <p className="mt-4 text-center text-[11px] leading-relaxed text-slate-500">
-          Each cashier has their own password, set by the store owner.
+          Each cashier has their own password, and the owner portal has its own password too.
         </p>
       </div>
     </div>
